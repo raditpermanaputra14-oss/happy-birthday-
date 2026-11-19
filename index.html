@@ -61,7 +61,7 @@ body.birthday-mode {
   background:linear-gradient(135deg,var(--bg1),var(--bg2) 55%,var(--bg3));
   animation:paletteShift 10s ease-in-out infinite;
 }
-.quiz-screen { min-height:100svh; display:grid; place-items:center; align-content:center; padding:20px 16px; position:relative; }
+.quiz-screen { min-height:0; height:auto; display:grid; place-items:start center; align-content:start; padding:24px 16px 28px; position:relative; }
 .quiz-screen.hide { display:none; }
 .birthday-screen { display:none; opacity:0; }
 .birthday-screen.reveal { display:grid; animation:revealIn 1s ease forwards; }
@@ -175,6 +175,13 @@ footer { font-size:11px; color:var(--footer); margin-top:30px; letter-spacing:.0
   body { animation:none; }
   *,*:before,*:after { transition:none !important; animation-duration:.01ms !important; }
 }
+
+/* Final layout correction: the quiz page only takes the space its content needs. */
+html, body { min-height:0; }
+body { height:auto; }
+.quiz-screen { min-height:0 !important; height:auto !important; }
+.quiz-screen .quiz-card { width:min(680px,100%); justify-self:center; }
+.quiz-start-row { justify-content:center !important; }
 </style>
 </head>
 <body>
