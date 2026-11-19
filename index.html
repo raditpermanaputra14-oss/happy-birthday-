@@ -53,14 +53,14 @@ body {
   }
 }
 
-.wrap { min-height:100vh; display:grid; place-items:center; padding:34px 16px; position:relative; }
+.birthday-screen { display:none; opacity:0; }\n.birthday-screen.reveal { display:grid; animation:revealIn 1.1s ease forwards; }\n.quiz-screen.hide { display:none; }\n@keyframes revealIn { from { opacity:0; transform:scale(.96); } to { opacity:1; transform:scale(1); } }\n.quiz-card { max-width:620px; padding:clamp(28px,6vw,56px); }\n.quiz-tag { display:inline-block; padding:8px 16px; border:1px solid var(--soft-edge); border-radius:999px; color:var(--deep); font-size:11px; font-weight:700; letter-spacing:.16em; }\n.quiz-icon { width:76px; height:76px; margin:25px auto 14px; display:grid; place-items:center; border-radius:24px; background:var(--soft); color:var(--accent); font:700 44px Georgia,serif; box-shadow:0 10px 30px var(--shadow); }\n.quiz-kicker { margin:0; color:var(--footer); font-size:10px; font-weight:700; letter-spacing:.2em; }\n.quiz-title { margin:14px 0; font-size:clamp(38px,8vw,62px); }\n.quiz-description { max-width:440px; margin:0 auto; color:var(--muted); font-size:14px; line-height:1.8; }\n.quiz-details { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:28px 0 20px; }\n.quiz-details div { padding:14px 6px; border:1px solid var(--soft-edge); border-radius:16px; background:var(--soft); }\n.quiz-details strong { display:block; color:var(--accent); font-size:20px; }\n.quiz-details span { display:block; margin-top:5px; color:var(--muted); font-size:10px; }\n.quiz-note { color:var(--deep); font-size:12px; font-weight:600; }\n.start-button { min-width:210px; letter-spacing:.08em; }\n.start-button span { margin-left:12px; font-size:18px; }\n.wrap { min-height:100vh; display:grid; place-items:center; padding:34px 16px; position:relative; }
 .card {
   width:min(760px,100%); padding:clamp(28px,6vw,64px); text-align:center;
   border:1px solid var(--panel-edge); border-radius:32px;
   background:color-mix(in srgb,var(--panel) 88%,transparent);
   box-shadow:0 24px 70px var(--shadow); backdrop-filter:blur(10px);
   position:relative; overflow:hidden;
-  transition:background-color 5s ease,border-color 3s ease,box-shadow 3s ease;
+  transition:background-color 5s ease,border-color 5s ease,box-shadow 5s ease;
 }
 .card:before,.card:after {
   content:"✿"; position:absolute; color:var(--accent); font-size:100px; opacity:.22;
@@ -89,7 +89,7 @@ h1 { font:600 clamp(42px,9vw,76px)/1.04 'Playfair Display',serif; margin:18px 0 
   font-size:clamp(100px,21vw,158px); font-weight:700;
   font-variant-numeric:tabular-nums; line-height:.95;
   text-shadow:4px 5px 0 color-mix(in srgb,var(--accent) 22%,white);
-  transition:color 5s ease,text-shadow 3s ease;
+  transition:color 5s ease,text-shadow 5s ease;
 }
 .age span {
   display:inline-flex; justify-content:center; align-items:center;
@@ -105,14 +105,14 @@ button {
   border:0; border-radius:999px; padding:14px 24px; margin-top:26px;
   background:var(--accent); color:white; font:700 14px 'DM Sans',sans-serif;
   cursor:pointer; box-shadow:0 9px 22px var(--shadow);
-  transition:background-color 5s ease,box-shadow 3s ease,transform .2s ease;
+  transition:background-color 5s ease,box-shadow 5s ease,transform .2s ease;
 }
 button:hover { transform:translateY(-2px); }
 #surprise {
   display:none; margin:22px auto 0; padding:18px 20px; max-width:480px;
   border-radius:18px; background:var(--soft); border:1px solid var(--soft-edge);
   color:var(--muted); line-height:1.8;
-  transition:background-color 5s ease,border-color 3s ease,color 3s ease;
+  transition:background-color 5s ease,border-color 5s ease,color 5s ease;
   animation:pop .5s ease;
 }
 @keyframes pop { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
@@ -133,7 +133,7 @@ footer { font-size:11px; color:var(--footer); margin-top:30px; letter-spacing:.0
 </style>
 </head>
 <body>
-<main class="wrap">
+<main class="wrap quiz-screen" id="quizScreen"><span class="sparkle s1">✧</span><span class="sparkle s2">♡</span><span class="sparkle s3">✦</span><span class="sparkle s4">✧</span><section class="card quiz-card"><div class="quiz-tag">✦ SPECIAL QUIZ ✦</div><div class="quiz-icon">?</div><p class="quiz-kicker">A LITTLE CHALLENGE FOR YOU</p><h1 class="quiz-title">Ready for a<br>little surprise?</h1><p class="quiz-description">Sebelum melanjutkan, ikuti tantangan kecil ini. Tidak perlu persiapan khusus—cukup luangkan beberapa detik dan tekan tombol di bawah.</p><div class="quiz-details"><div><strong>01</strong><span>Special moment</span></div><div><strong>02</strong><span>One surprise</span></div><div><strong>03</strong><span>Just for you</span></div></div><div class="quiz-note">Pastikan kamu siap sampai akhir ✨</div><button type="button" class="start-button" onclick="startQuiz()">MULAI QUIZ <span>→</span></button><footer>AEC • MINI QUIZ</footer></section></main><main class="wrap birthday-screen" id="birthdayScreen" aria-hidden="true">
   <span class="sparkle s1">✧</span><span class="sparkle s2">♡</span><span class="sparkle s3">✦</span><span class="sparkle s4">✧</span>
   <section class="card">
     <div class="eyebrow">A special day for the special one</div>
@@ -161,7 +161,7 @@ footer { font-size:11px; color:var(--footer); margin-top:30px; letter-spacing:.0
   </section>
 </main>
 <script>
-function showSurprise() {
+function startQuiz() {\n  const quiz = document.getElementById("quizScreen");\n  const birthday = document.getElementById("birthdayScreen");\n  quiz.classList.add("hide");\n  birthday.classList.add("reveal");\n  birthday.setAttribute("aria-hidden", "false");\n  window.scrollTo({ top: 0, behavior: "smooth" });\n}\nfunction showSurprise() {
   const box = document.getElementById('surprise');
   box.style.display = box.style.display === 'block' ? 'none' : 'block';
 }
