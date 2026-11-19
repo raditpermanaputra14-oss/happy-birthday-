@@ -239,7 +239,8 @@ body {
 .quiz-step[hidden] { display:none !important; }
 .quiz-step.active { display:block; }
 .quiz-actions button:disabled { opacity:.38; cursor:not-allowed; transform:none; box-shadow:none; }
-\n</style>
+
+</style>
 </head>
 <body>
 <main class="quiz-screen" id="quizScreen">
@@ -254,16 +255,18 @@ body {
     <p class="quiz-label">Petunjuk pengerjaan</p>
     <h1 class="quiz-title">Selesaikan Quiz Ini</h1>
     <p class="quiz-description">
-      Bacalah petunjuk dengan saksama sebelum memulai. Jawablah setiap soal dengan benar
-      dan pilih satu jawaban yang paling tepat. Pastikan kamu mengikuti instruksi hingga selesai.
+      Selesaikan 3 soal matematika dan penalaran secara berurutan. Masukkan jawaban dalam bentuk angka,
+      periksa kembali hasil perhitunganmu, dan jawab semua soal dengan benar untuk membuka kejutan.
     </p>
     <div class="quiz-instructions">
       <h2>Peraturan Quiz</h2>
       <ul>
-        <li>Baca setiap instruksi dengan teliti.</li>
-        <li>Pilih jawaban yang menurutmu paling tepat.</li>
-        <li>Kerjakan dengan tenang dan jangan terburu-buru.</li>
-        <li>Tekan tombol mulai untuk melanjutkan.</li>
+        <li>Quiz terdiri dari 3 soal matematika dan penalaran yang dikerjakan satu per satu.</li>
+        <li>Baca setiap soal dengan teliti dan masukkan jawaban dalam bentuk angka.</li>
+        <li>Tekan tombol <strong>LANJUTKAN</strong> setelah mengisi jawaban untuk berpindah ke soal berikutnya.</li>
+        <li>Setelah soal terakhir, jawaban akan diperiksa selama 5 detik.</li>
+        <li>Semua jawaban harus benar agar kamu dapat melanjutkan ke halaman kejutan ulang tahun.</li>
+        <li>Jika masih ada jawaban yang salah, kamu bisa mencoba kembali dari soal pertama.</li>
       </ul>
     </div>
     <div class="quiz-start-row">
@@ -345,7 +348,7 @@ function startQuiz() {
   window.scrollTo(0, 0);
 }
 
-document.getElementById('startQuizButton').addEventListener('click', startQuiz);\nupdateQuestionStep();
+document.getElementById('startQuizButton').addEventListener('click', startQuiz);
 
 const quizForm = document.getElementById('birthdayQuizForm');
 const quizSteps = Array.from(document.querySelectorAll('.quiz-step'));
@@ -390,6 +393,8 @@ nextQuestionButton.addEventListener('click', function() {
 
   finishQuiz();
 });
+
+updateQuestionStep();
 
 function finishQuiz() {
   const answers = [
