@@ -235,7 +235,11 @@ body {
 @keyframes quizSpin { to { transform:rotate(360deg); } }
 .quiz-error { color:#ffb8c5 !important; }
 
-</style>
+
+.quiz-step[hidden] { display:none !important; }
+.quiz-step.active { display:block; }
+.quiz-actions button:disabled { opacity:.38; cursor:not-allowed; transform:none; box-shadow:none; }
+\n</style>
 </head>
 <body>
 <main class="quiz-screen" id="quizScreen">
@@ -278,20 +282,20 @@ body {
   <p class="quiz-label">Tantangan dimulai</p>
   <h1 class="quiz-title">Uji Ketelitianmu</h1>
   <p class="quiz-description">Kerjakan ketiga soal berikut. Jawaban harus berupa angka. Perhatikan urutan operasi dan informasi di setiap soal.</p>
-  <form id="birthdayQuizForm">
-    <div class="quiz-q">
+  <form id="birthdayQuizForm" novalidate>
+    <div class="quiz-q quiz-step active" data-step="0">
       <label for="answer1">1. Sebuah bilangan dikurangi 5, lalu hasilnya dikalikan 3 dan ditambah 2. Jika hasil akhirnya 56, berapakah bilangan awal tersebut?</label>
-      <input id="answer1" type="number" inputmode="numeric" placeholder="Masukkan jawaban" required>
+      <input id="answer1" type="number" inputmode="numeric" placeholder="Masukkan jawaban" autocomplete="off" required>
     </div>
-    <div class="quiz-q">
+    <div class="quiz-q quiz-step" data-step="1" hidden>
       <label for="answer2">2. Empat kali suatu bilangan, kemudian ditambah 7, menghasilkan 51. Berapakah bilangan itu?</label>
-      <input id="answer2" type="number" inputmode="numeric" placeholder="Masukkan jawaban" required>
+      <input id="answer2" type="number" inputmode="numeric" placeholder="Masukkan jawaban" autocomplete="off" required>
     </div>
-    <div class="quiz-q">
+    <div class="quiz-q quiz-step" data-step="2" hidden>
       <label for="answer3">3. Sebuah peristiwa dimulai pada tahun 2000. Peristiwa itu diperingati setelah berlalu 2 dekade dan 6 tahun. Tahun berapakah peringatan tersebut?</label>
-      <input id="answer3" type="number" inputmode="numeric" placeholder="Masukkan jawaban" required>
+      <input id="answer3" type="number" inputmode="numeric" placeholder="Masukkan jawaban" autocomplete="off" required>
     </div>
-    <div class="quiz-actions"><button type="submit">KIRIM JAWABAN →</button></div>
+    <div class="quiz-actions"><button type="button" id="nextQuestionButton" disabled>LANJUTKAN →</button></div>
   </form>
   <div class="quiz-status" id="quizProcessing">
     <div class="quiz-spinner"></div>
@@ -341,45 +345,85 @@ function startQuiz() {
   window.scrollTo(0, 0);
 }
 
-document.getElementById('startQuizButton').addEventListener('click', startQuiz);
+document.getElementById('startQuizButton').addEventListener('click', startQuiz);\nupdateQuestionStep();
 
 const quizForm = document.getElementById('birthdayQuizForm');
-quizForm.addEventListener('submit', function(event) {
-  event.preventDefault();
-  if (!quizForm.reportValidity()) return;
+const quizSteps = Array.from(document.querySelectorAll('.quiz-step'));
+const nextQuestionButton = document.getElementById('nextQuestionButton');
+let currentQuestion = 0;
 
+function updateQuestionStep() {
+  quizSteps.forEach((step, index) => {
+    step.hidden = index !== currentQuestion;
+    step.classList.toggle('active', index === currentQuestion);
+  });
+  const currentInput = quizSteps[currentQuestion].querySelector('input');
+  nextQuestionButton.disabled = currentInput.value.trim() === '';
+  nextQuestionButton.textContent = currentQuestion === quizSteps.length - 1 ? 'SELESAI ✓' : 'LANJUTKAN →';
+  document.getElementById('questionCounter').textContent = `SOAL ${currentQuestion + 1} / 3`;
+  document.getElementById('questionProgress').style.width = `${((currentQuestion + 1) / quizSteps.length) * 100}%`;
+}
+
+quizSteps.forEach(step => {
+  const input = step.querySelector('input');
+  input.addEventListener('input', () => {
+    if (quizSteps.indexOf(step) === currentQuestion) {
+      nextQuestionButton.disabled = input.value.trim() === '';
+    }
+  });
+});
+
+nextQuestionButton.addEventListener('click', function() {
+  const currentInput = quizSteps[currentQuestion].querySelector('input');
+  if (currentInput.value.trim() === '') {
+    currentInput.focus();
+    return;
+  }
+
+  if (currentQuestion < quizSteps.length - 1) {
+    currentQuestion++;
+    updateQuestionStep();
+    quizSteps[currentQuestion].querySelector('input').focus();
+    window.scrollTo(0, 0);
+    return;
+  }
+
+  finishQuiz();
+});
+
+function finishQuiz() {
   const answers = [
     Number(document.getElementById('answer1').value),
     Number(document.getElementById('answer2').value),
     Number(document.getElementById('answer3').value)
   ];
   const correct = [23, 11, 2026];
-  const form = document.getElementById('birthdayQuizForm');
   const processing = document.getElementById('quizProcessing');
   const result = document.getElementById('quizResult');
-  form.style.display = 'none';
+  quizForm.style.display = 'none';
   processing.classList.add('show');
   result.classList.remove('show');
-  document.getElementById('questionProgress').style.width = '100%';
 
   window.setTimeout(function() {
     processing.classList.remove('show');
     if (answers.every((value, index) => value === correct[index])) {
-      result.innerHTML = '<h2>Semua Jawaban Benar!</h2><p>Kamu berhasil menyelesaikan ketiga tantangan. Jawabanmu tepat.</p><div class="quiz-actions"><button type="button" id="submitScoreButton">SUBMIT NILAI →</button></div>';
+      result.innerHTML = '<h2>Semua Jawaban Benar!</h2><p>Jawaban kamu: <strong>23, 11, 2026</strong></p><p>Kamu berhasil menyelesaikan ketiga tantangan.</p><div class="quiz-actions"><button type="button" id="submitScoreButton">SUBMIT NILAI →</button></div>';
       document.getElementById('submitScoreButton').addEventListener('click', revealBirthday);
     } else {
-      result.innerHTML = '<h2 class="quiz-error">Masih Ada Jawaban yang Salah</h2><p>Periksa kembali langkah pengerjaanmu, lalu coba sekali lagi.</p><div class="quiz-actions"><button type="button" id="retryQuizButton">COBA LAGI</button></div>';
+      result.innerHTML = '<h2 class="quiz-error">Masih Ada Jawaban yang Salah</h2><p>Periksa kembali jawabanmu, lalu coba sekali lagi.</p><div class="quiz-actions"><button type="button" id="retryQuizButton">COBA LAGI</button></div>';
       document.getElementById('retryQuizButton').addEventListener('click', resetQuiz);
     }
     result.classList.add('show');
+    window.scrollTo(0, 0);
   }, 5000);
-});
+}
 
 function resetQuiz() {
   quizForm.reset();
+  currentQuestion = 0;
   quizForm.style.display = 'block';
   document.getElementById('quizResult').classList.remove('show');
-  document.getElementById('questionProgress').style.width = '0%';
+  updateQuestionStep();
   window.scrollTo(0, 0);
 }
 
