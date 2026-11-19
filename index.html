@@ -207,6 +207,15 @@ body {
   #quizScreen { padding:14px 14px 0 !important; }
   #quizScreen .quiz-card { padding:24px 20px; }
 }
+
+/* Saat tombol MULAI QUIZ ditekan, sembunyikan seluruh halaman quiz. */
+#quizScreen.hide {
+  display:none !important;
+}
+#birthdayScreen.reveal {
+  display:grid !important;
+  opacity:1;
+}
 </style>
 </head>
 <body>
@@ -275,10 +284,11 @@ function startQuiz() {
   if (!quiz || !birthday) return;
 
   quiz.classList.add('hide');
+  quiz.setAttribute('aria-hidden', 'true');
   document.body.classList.add('birthday-mode');
   birthday.classList.add('reveal');
   birthday.setAttribute('aria-hidden', 'false');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo(0, 0);
 }
 
 document.getElementById('startQuizButton').addEventListener('click', startQuiz);
