@@ -240,37 +240,29 @@ body {
 .quiz-step.active { display:block; }
 .quiz-actions button:disabled { opacity:.38; cursor:not-allowed; transform:none; box-shadow:none; }
 \n
-/* Lapisan transisi dibuat selalu berada di atas seluruh halaman. */
+/* Lapisan gelap: selalu di atas seluruh konten, tanpa transisi visibility. */
 #birthdayTransition {
   position:fixed !important;
   inset:0 !important;
-  width:100vw !important;
+  width:100% !important;
   height:100vh !important;
   height:100dvh !important;
-  z-index:2147483000 !important;
-  background:#000 !important;
+  display:block !important;
+  z-index:2147483647 !important;
+  background:rgb(0,0,0) !important;
   opacity:0;
-  visibility:hidden;
-  pointer-events:none;
-  transition:opacity 5s linear, visibility 0s linear 5s;
+  visibility:visible !important;
+  pointer-events:none !important;
+  transition:opacity 5s linear !important;
+  will-change:opacity;
 }
-#birthdayTransition.active {
-  opacity:1;
-  visibility:visible;
-  pointer-events:auto;
-  transition:opacity 5s linear, visibility 0s linear;
-}
-#birthdayTransition.fade-out {
-  opacity:0;
-  visibility:visible;
-  pointer-events:none;
-  transition:opacity 5s linear, visibility 0s linear 5s;
-}
+#birthdayTransition.active { opacity:1 !important; }
+#birthdayTransition.fade-out { opacity:0 !important; }
+
 #birthdayDateReveal {
   position:fixed !important;
-  z-index:2147483001 !important;
-  left:50%;
-  top:50%;
+  z-index:2147483646 !important;
+  left:50%; top:50%;
   width:min(94vw,900px);
   transform:translate(-50%,-50%);
   color:#fff !important;
@@ -295,30 +287,19 @@ body {
 }
 #volumeHint {
   position:fixed !important;
-  z-index:2147483002 !important;
+  z-index:2147483646 !important;
   left:50%;
   bottom:max(24px, env(safe-area-inset-bottom));
   transform:translateX(-50%);
-  width:max-content;
-  max-width:90vw;
+  width:max-content; max-width:90vw;
   color:#fff !important;
   font:700 13px 'DM Sans',sans-serif;
-  letter-spacing:.16em;
-  text-align:center;
-  opacity:0;
-  visibility:hidden;
-  pointer-events:none;
-  white-space:nowrap;
-  text-shadow:0 1px 12px #000;
+  letter-spacing:.16em; text-align:center;
+  opacity:0; visibility:hidden; pointer-events:none;
+  white-space:nowrap; text-shadow:0 1px 12px #000;
 }
-#volumeHint.show {
-  opacity:1;
-  visibility:visible;
-}
-#volumeHint.needs-tap {
-  pointer-events:auto;
-  cursor:pointer;
-}
+#volumeHint.show { opacity:1; visibility:visible; }
+#volumeHint.needs-tap { pointer-events:auto; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -536,15 +517,14 @@ function startBirthdayReveal() {
   let voiceStarted = false;
   let overlayClosed = false;
 
-  // Pastikan overlay tampil dan browser menghitung kondisi awal sebelum fade-in.
-  shade.classList.remove('fade-out');
+  // Siapkan kondisi awal secara eksplisit, lalu mulai fade-in 5 detik.
+  shade.classList.remove('active', 'fade-out');
   shade.setAttribute('aria-hidden', 'false');
-  shade.style.visibility = 'visible';
-  shade.style.opacity = '0';
-  void shade.offsetWidth;
+  shade.style.setProperty('display', 'block', 'important');
+  shade.style.setProperty('opacity', '0');
+  void shade.offsetHeight; // paksa browser menerapkan opacity 0
   requestAnimationFrame(() => {
-    shade.classList.add('active');
-    shade.style.opacity = '';
+    requestAnimationFrame(() => shade.classList.add('active'));
   });
 
   // Hanya setelah 5 detik penuh, tukar halaman di balik layar hitam.
@@ -563,11 +543,12 @@ function startBirthdayReveal() {
     overlayClosed = true;
     dateText.classList.remove('show');
     volumeHint.classList.remove('show', 'needs-tap');
+    shade.classList.remove('active');
+    // Tetap hitam selama audio, lalu fade-out berlangsung tepat 5 detik.
     shade.classList.add('fade-out');
-    // Tetap hitam selama audio, lalu fade-out berlangsung 5 detik.
     window.setTimeout(() => {
-      shade.classList.remove('active', 'fade-out');
-      shade.style.visibility = 'hidden';
+      shade.classList.remove('fade-out');
+      shade.style.setProperty('display', 'none', 'important');
       shade.style.opacity = '0';
       shade.setAttribute('aria-hidden', 'true');
     }, 5100);
