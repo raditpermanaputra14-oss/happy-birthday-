@@ -765,8 +765,11 @@ function startBirthdayReveal() {
   dateText.style.clipPath = 'inset(0 100% 0 0)';
   const questionAnimation = dateText.animate(
     [
-      { opacity: 0, clipPath: 'inset(0 100% 0 0)' },
-      { opacity: 1, clipPath: 'inset(0 0 0 0)' }
+      // 0–2,5 detik: fade-in sekaligus sapuan tulisan.
+      { opacity: 0, clipPath: 'inset(0 100% 0 0)', offset: 0 },
+      { opacity: 1, clipPath: 'inset(0 0 0 0)', offset: 0.5 },
+      // 2,5–5 detik: tulisan fade-out hingga benar-benar hilang.
+      { opacity: 0, clipPath: 'inset(0 0 0 0)', offset: 1 }
     ],
     { duration: 5000, easing: 'linear', fill: 'forwards' }
   );
