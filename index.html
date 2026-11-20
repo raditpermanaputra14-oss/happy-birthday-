@@ -266,13 +266,13 @@ body {
 #birthdayDateReveal {
   position:fixed !important;
   z-index:2147483002 !important;
-  left:50%; top:50%; width:min(94vw,900px);
+  left:50%; top:50%; width:min(88vw,850px);
   transform:translate(-50%,-50%);
   color:#fff !important; text-align:center;
-  font:700 clamp(30px,9vw,76px)/1.1 'DM Sans',sans-serif;
-  letter-spacing:.12em; text-shadow:0 0 24px #ffffff70;
+  font:700 clamp(22px,6vw,52px)/1.25 'DM Sans',sans-serif;
+  letter-spacing:.035em; text-shadow:0 0 24px #ffffff70;
   opacity:0; clip-path:inset(0 100% 0 0);
-  pointer-events:none; white-space:nowrap; will-change:clip-path,opacity;
+  pointer-events:none; white-space:normal; will-change:clip-path,opacity;
 }
 #birthdayDateReveal.show {
   opacity:1;
@@ -565,6 +565,7 @@ function finishQuiz() {
     processing.classList.remove('show');
     if (answers.every((value, index) => value === correct[index])) {
       // Jika semua jawaban benar, lanjut otomatis ke transisi gelap tanpa halaman hasil/tombol submit.
+      result.innerHTML = '';
       result.classList.remove('show');
       startBirthdayReveal();
       return;
@@ -753,14 +754,22 @@ function startBirthdayReveal() {
   shade.style.visibility = 'visible';
   shade.style.opacity = '0';
   shade.style.pointerEvents = 'auto';
-  // Pesan tampil bersamaan dengan fade-in gelap selama 5 detik.
+  // Pesan pertanyaan tampil di atas lapisan gelap dan disapu selama fade-in 5 detik.
+  // Atur visibility/display secara eksplisit agar tetap terlihat di Chrome Android.
+  dateText.textContent = 'Masih ingatkah semua jawabanmu?';
   dateText.classList.remove('show', 'fade-in-question');
-  dateText.style.animation = 'none';
+  dateText.style.setProperty('display', 'block', 'important');
+  dateText.style.setProperty('visibility', 'visible', 'important');
+  dateText.style.setProperty('z-index', '2147483002', 'important');
   dateText.style.opacity = '0';
   dateText.style.clipPath = 'inset(0 100% 0 0)';
-  void dateText.offsetWidth;
-  dateText.style.animation = '';
-  dateText.classList.add('fade-in-question');
+  const questionAnimation = dateText.animate(
+    [
+      { opacity: 0, clipPath: 'inset(0 100% 0 0)' },
+      { opacity: 1, clipPath: 'inset(0 0 0 0)' }
+    ],
+    { duration: 5000, easing: 'linear', fill: 'forwards' }
+  );
 
   const fadeInAnimation = shade.animate(
     [{ opacity: 0 }, { opacity: 1 }],
@@ -768,9 +777,10 @@ function startBirthdayReveal() {
   );
   fadeInAnimation.onfinish = () => {
     shade.style.opacity = '1';
-    dateText.classList.remove('fade-in-question');
+    // Pertanyaan selesai bersamaan dengan fade-in; disembunyikan setelah layar benar-benar gelap.
     dateText.style.opacity = '0';
-    dateText.style.clipPath = 'inset(0 0 0 0)';
+    dateText.style.setProperty('visibility', 'hidden', 'important');
+    questionAnimation.cancel();
   };
 
   // Hanya setelah 5 detik penuh, tukar halaman di balik layar hitam.
@@ -842,6 +852,7 @@ function startBirthdayReveal() {
     dateText.style.setProperty('--voice-duration', `${voiceDuration}s`);
     dateText.classList.remove('show', 'fade-in-question');
     dateText.style.opacity = '0';
+    dateText.style.setProperty('visibility', 'hidden', 'important');
     void dateText.offsetWidth;
     dateText.style.setProperty('z-index', '2147483002', 'important');
     volumeHint.style.setProperty('z-index', '2147483003', 'important');
