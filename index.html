@@ -1012,15 +1012,41 @@ async function showSurprise() {
   if (!await showCard(`<div class="equation-text">${equations[2]}</div>`, 10000, 1000)) return;
   if (token !== surpriseSequenceToken) return;
 
-  content.innerHTML = `<svg class="surprise-love" viewBox="0 0 240 210" role="img" aria-label="Gambar love berwarna merah muda">
-    <defs><linearGradient id="surpriseLoveGradientV13" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9bc4"/><stop offset="1" stop-color="#d92f79"/></linearGradient></defs>
-    <path d="M120 190 C103 174 22 119 22 66 C22 18 83 4 120 51 C157 4 218 18 218 66 C218 119 137 174 120 190Z" fill="url(#surpriseLoveGradientV13)" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
-    <path d="M65 48 C78 32 99 36 108 49" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".85"/>
-    <path d="M158 83 C169 69 184 70 190 82" fill="none" stroke="#ffd8e8" stroke-width="5" stroke-linecap="round" opacity=".9"/>
-  </svg>`;
-  content.style.opacity = '0';
-  content.style.transform = 'translateY(10px)';
-  await runSurpriseFade(content, 'in', 1500, token);
+  // Seluruh rangkaian gambar mengikuti sisa waktu audio yang SEDANG berjalan.
+  // Audio tidak disentuh currentTime-nya dan tidak pernah diputar ulang.
+  const birthdayAudio = document.getElementById('birthdayVoiceOver');
+  const audioDuration = Number.isFinite(birthdayAudio?.duration) && birthdayAudio.duration > 0
+    ? birthdayAudio.duration : 137.56;
+  const audioPosition = Number.isFinite(birthdayAudio?.currentTime) ? birthdayAudio.currentTime : 0;
+  const remainingAfterText = Math.max(0, (audioDuration - audioPosition) * 1000);
+  if (remainingAfterText <= 250) {
+    content.style.opacity = '0';
+    content.style.visibility = 'hidden';
+    return;
+  }
+
+  const birthdayPictures = [
+    { name: 'Love', svg: `<svg class="surprise-love" viewBox="0 0 240 210" role="img" aria-label="Gambar love berwarna merah muda"><defs><linearGradient id="surpriseLoveGradientV13" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9bc4"/><stop offset="1" stop-color="#d92f79"/></linearGradient></defs><path d="M120 190 C103 174 22 119 22 66 C22 18 83 4 120 51 C157 4 218 18 218 66 C218 119 137 174 120 190Z" fill="url(#surpriseLoveGradientV13)" stroke="#fff" stroke-width="5" stroke-linejoin="round"/><path d="M65 48 C78 32 99 36 108 49" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".85"/><path d="M158 83 C169 69 184 70 190 82" fill="none" stroke="#ffd8e8" stroke-width="5" stroke-linecap="round" opacity=".9"/></svg>` },
+    { name: 'Kue ulang tahun', svg: `<svg viewBox="0 0 240 210" role="img" aria-label="Ilustrasi kue ulang tahun" style="display:block;width:min(210px,70%);height:auto;margin:auto;filter:drop-shadow(0 8px 14px #d92f7940)"><path d="M45 105h150v72H45z" rx="12" fill="#ff9bc4" stroke="#fff" stroke-width="5"/><path d="M45 125q18 18 36 0t36 0t36 0t32 0t15 0v-20H45z" fill="#fff0f6"/><path d="M35 177h170" stroke="#d92f79" stroke-width="7" stroke-linecap="round"/><path d="M88 104V55m32 49V42m32 62V55" stroke="#ffd166" stroke-width="9" stroke-linecap="round"/><path d="M88 43q-10-12 0-22q10 10 0 22m32-1q-10-12 0-22q10 10 0 22m32 12q-10-12 0-22q10 10 0 22" fill="#ff8a45"/><path d="M120 15v14" stroke="#fff" stroke-width="3"/></svg>` },
+    { name: 'Balon warna-warni', svg: `<svg viewBox="0 0 240 210" role="img" aria-label="Ilustrasi balon warna-warni" style="display:block;width:min(210px,70%);height:auto;margin:auto;filter:drop-shadow(0 8px 14px #d92f7940)"><g stroke="#fff" stroke-width="4"><ellipse cx="78" cy="70" rx="38" ry="49" fill="#ff83b7"/><ellipse cx="150" cy="62" rx="38" ry="49" fill="#8ed8ff"/><ellipse cx="116" cy="105" rx="38" ry="49" fill="#ffd166"/></g><g fill="none" stroke="#d92f79" stroke-width="2.5"><path d="M78 119q15 45 2 76M150 111q-18 48-5 84M116 154q-3 24 20 42"/></g><g fill="#fff"><circle cx="65" cy="55" r="7"/><circle cx="137" cy="47" r="7"/><circle cx="103" cy="91" r="7"/></g></svg>` },
+    { name: 'Buket bunga', svg: `<svg viewBox="0 0 240 210" role="img" aria-label="Ilustrasi buket bunga" style="display:block;width:min(210px,70%);height:auto;margin:auto;filter:drop-shadow(0 8px 14px #d92f7940)"><path d="M65 108l55 88 55-88z" fill="#ffb6d2" stroke="#fff" stroke-width="5"/><path d="M120 190l-8-62m8 62l-28-58m28 58l28-58" stroke="#4a9b68" stroke-width="6" stroke-linecap="round"/><g stroke="#fff" stroke-width="3"><g fill="#ff6fae"><circle cx="86" cy="58" r="23"/><circle cx="120" cy="40" r="23"/><circle cx="154" cy="58" r="23"/></g><g fill="#ffd166"><circle cx="86" cy="58" r="8"/><circle cx="120" cy="40" r="8"/><circle cx="154" cy="58" r="8"/></g></g><path d="M77 118q43 22 86 0" fill="none" stroke="#d92f79" stroke-width="9" stroke-linecap="round"/></svg>` },
+    { name: 'Bintang dan konfeti', svg: `<svg viewBox="0 0 240 210" role="img" aria-label="Ilustrasi bintang dan konfeti" style="display:block;width:min(210px,70%);height:auto;margin:auto;filter:drop-shadow(0 8px 14px #d92f7940)"><path d="M120 22l20 59 62 2-49 38 17 60-50-35-50 35 17-60-49-38 62-2z" fill="#ffd166" stroke="#fff" stroke-width="5" stroke-linejoin="round"/><g fill="#ff83b7"><circle cx="35" cy="42" r="8"/><circle cx="205" cy="48" r="7"/><circle cx="38" cy="160" r="6"/><circle cx="202" cy="160" r="9"/></g><g stroke="#8ed8ff" stroke-width="6" stroke-linecap="round"><path d="M62 20l9 15m97 135l10 14M186 18l-8 15M50 105l-13 2"/></g></svg>` }
+  ];
+
+  // Lima gambar berbagi sisa durasi secara merata; setiap gambar memiliki
+  // fade-in dan fade-out 1,5 detik (dipendekkan otomatis bila perlu).
+  const segmentMs = remainingAfterText / birthdayPictures.length;
+  for (const picture of birthdayPictures) {
+    if (token !== surpriseSequenceToken) return;
+    const fadeMs = Math.min(1500, Math.floor(segmentMs / 3));
+    content.innerHTML = picture.svg;
+    content.style.opacity = '0';
+    content.style.transform = 'translateY(10px)';
+    if (!await runSurpriseFade(content, 'in', fadeMs, token)) return;
+    if (!await waitSurprise(Math.max(0, segmentMs - fadeMs * 2), token)) return;
+    if (!await runSurpriseFade(content, 'out', fadeMs, token)) return;
+  }
+  content.style.visibility = 'hidden';
 }
 </script>
 </body>
