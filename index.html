@@ -320,7 +320,7 @@ body {
   overflow-wrap:anywhere;
   word-break:normal;
 }
-#surpriseContent.fade-in, #surpriseContent.fade-out { animation:none !important; }
+/* Animasi kotak kejutan dikendalikan melalui Web Animations API. */
 #surpriseContent .equation-text { font-family:'DM Sans',sans-serif; font-size:clamp(15px,4vw,20px); line-height:1.55; letter-spacing:.015em; }
 #surpriseContent .surprise-love { display:block; width:min(190px,65%); height:auto; margin:0 auto; filter:drop-shadow(0 8px 14px #d92f7940); }
 @keyframes surpriseFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
@@ -335,6 +335,10 @@ body {
 #surpriseContent { display:block !important; width:100% !important; max-width:100% !important; box-sizing:border-box !important; overflow-wrap:anywhere; word-break:normal; }
 #surpriseContent .equation-text { font-size:clamp(14px, 3.8vw, 19px) !important; line-height:1.55 !important; white-space:normal; }
 #surpriseContent .surprise-love { display:block !important; width:min(190px, 65%) !important; max-height:150px; height:auto !important; margin:0 auto !important; }
+
+
+/* V13: cegah halaman bergeser selama layar gelap, termasuk gesture sentuh. */
+html.birthday-scroll-locked, body.birthday-scroll-locked { overflow:hidden !important; overscroll-behavior:none !important; touch-action:none !important; }
 
 </style>
 </head>
@@ -560,6 +564,49 @@ function startBirthdayReveal() {
   let lineArtFrame = 0;
   let lineArtStart = 0;
 
+  // Kunci scroll sejak fade-in dimulai sampai fade-out benar-benar selesai.
+  const lockedScrollY = window.scrollY || window.pageYOffset || 0;
+  const oldBodyPosition = document.body.style.position;
+  const oldBodyTop = document.body.style.top;
+  const oldBodyWidth = document.body.style.width;
+  const oldBodyOverflow = document.body.style.overflow;
+  const oldHtmlOverflow = document.documentElement.style.overflow;
+  let birthdayScrollLocked = false;
+  const stopPageScroll = event => {
+    if (birthdayScrollLocked) event.preventDefault();
+  };
+  function lockBirthdayScroll() {
+    if (birthdayScrollLocked) return;
+    birthdayScrollLocked = true;
+    document.documentElement.classList.add('birthday-scroll-locked');
+    document.body.classList.add('birthday-scroll-locked');
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${lockedScrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('touchmove', stopPageScroll, { passive: false });
+    window.addEventListener('wheel', stopPageScroll, { passive: false });
+  }
+  function unlockBirthdayScroll() {
+    if (!birthdayScrollLocked) return;
+    birthdayScrollLocked = false;
+    window.removeEventListener('touchmove', stopPageScroll);
+    window.removeEventListener('wheel', stopPageScroll);
+    document.documentElement.classList.remove('birthday-scroll-locked');
+    document.body.classList.remove('birthday-scroll-locked');
+    document.body.style.position = oldBodyPosition;
+    document.body.style.top = oldBodyTop;
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = oldBodyWidth;
+    document.body.style.overflow = oldBodyOverflow;
+    document.documentElement.style.overflow = oldHtmlOverflow;
+    window.scrollTo(0, lockedScrollY);
+  }
+
   // Gambar garis neon simetris yang membentuk kupu-kupu geometris/mandala.
   // Kurva dibuat dalam koordinat normal agar tetap proporsional di layar HP maupun desktop.
   function startBirthdayLineArt() {
@@ -661,6 +708,7 @@ function startBirthdayReveal() {
   shade.style.setProperty('inset', '0', 'important');
   shade.style.setProperty('z-index', '2147483000', 'important');
   shade.style.setProperty('background', '#000', 'important');
+  lockBirthdayScroll();
   shade.style.visibility = 'visible';
   shade.style.opacity = '0';
   shade.style.pointerEvents = 'auto';
@@ -723,6 +771,7 @@ function startBirthdayReveal() {
       shade.style.visibility = 'hidden';
       shade.style.pointerEvents = 'none';
       shade.setAttribute('aria-hidden', 'true');
+      unlockBirthdayScroll();
     };
   }
 
@@ -797,6 +846,7 @@ function revealBirthday() {
 
 let surpriseSequenceToken = 0;
 let surpriseTimers = [];
+let surpriseAnimation = null;
 
 function clearSurpriseTimers() {
   surpriseTimers.forEach(id => clearTimeout(id));
@@ -813,16 +863,35 @@ function waitSurprise(ms, token) {
 }
 async function runSurpriseFade(content, mode, duration, token) {
   if (token !== surpriseSequenceToken) return false;
-  content.style.animation = 'none';
-  content.style.opacity = mode === 'in' ? '0' : '1';
-  content.style.transform = mode === 'in' ? 'translateY(10px)' : 'translateY(0)';
-  void content.offsetWidth;
-  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  if (surpriseAnimation) {
+    surpriseAnimation.cancel();
+    surpriseAnimation = null;
+  }
+  const isIn = mode === 'in';
+  const from = isIn ? 0 : 1;
+  const to = isIn ? 1 : 0;
+  content.style.display = 'block';
+  content.style.opacity = String(from);
+  content.style.transform = isIn ? 'translateY(10px)' : 'translateY(0)';
+  // Web Animations API menghindari aturan CSS lama yang sempat mematikan keyframe.
+  surpriseAnimation = content.animate(
+    [
+      { opacity: from, transform: isIn ? 'translateY(10px)' : 'translateY(0)' },
+      { opacity: to, transform: isIn ? 'translateY(0)' : 'translateY(-8px)' }
+    ],
+    { duration, easing: 'ease', fill: 'forwards' }
+  );
+  try {
+    await surpriseAnimation.finished;
+  } catch (_) {
+    return false;
+  }
   if (token !== surpriseSequenceToken) return false;
-  content.style.animation = mode === 'in'
-    ? `surpriseFadeIn ${duration}ms ease both`
-    : `surpriseFadeOut ${duration}ms ease both`;
-  return await waitSurprise(duration + 80, token);
+  surpriseAnimation.cancel();
+  surpriseAnimation = null;
+  content.style.opacity = String(to);
+  content.style.transform = isIn ? 'translateY(0)' : 'translateY(-8px)';
+  return true;
 }
 async function showSurprise() {
   const box = document.getElementById('surprise');
@@ -832,8 +901,9 @@ async function showSurprise() {
   if (box.classList.contains('is-open')) {
     surpriseSequenceToken++;
     clearSurpriseTimers();
-    content.style.animation = 'none';
+    if (surpriseAnimation) { surpriseAnimation.cancel(); surpriseAnimation = null; }
     content.style.opacity = '0';
+    content.style.animation = 'none';
     box.classList.remove('is-open', 'is-visible');
     box.setAttribute('aria-hidden', 'true');
     return;
@@ -842,6 +912,7 @@ async function showSurprise() {
   surpriseSequenceToken++;
   const token = surpriseSequenceToken;
   clearSurpriseTimers();
+  if (surpriseAnimation) { surpriseAnimation.cancel(); surpriseAnimation = null; }
   box.style.display = 'flex';
   box.classList.add('is-open', 'is-visible');
   box.setAttribute('aria-hidden', 'false');
@@ -855,11 +926,10 @@ async function showSurprise() {
 
   async function showCard(html, totalMs, fadeMs) {
     if (token !== surpriseSequenceToken) return false;
-    content.style.animation = 'none';
+    if (surpriseAnimation) { surpriseAnimation.cancel(); surpriseAnimation = null; }
     content.innerHTML = html;
     content.style.opacity = '0';
     content.style.transform = 'translateY(10px)';
-    void content.offsetWidth;
     if (!await runSurpriseFade(content, 'in', fadeMs, token)) return false;
     if (!await waitSurprise(Math.max(0, totalMs - fadeMs * 2), token)) return false;
     if (!await runSurpriseFade(content, 'out', fadeMs, token)) return false;
@@ -872,16 +942,14 @@ async function showSurprise() {
   if (!await showCard(`<div class="equation-text">${equations[2]}</div>`, 10000, 1000)) return;
   if (token !== surpriseSequenceToken) return;
 
-  content.style.animation = 'none';
   content.innerHTML = `<svg class="surprise-love" viewBox="0 0 240 210" role="img" aria-label="Gambar love berwarna merah muda">
-    <defs><linearGradient id="surpriseLoveGradientV12" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9bc4"/><stop offset="1" stop-color="#d92f79"/></linearGradient></defs>
-    <path d="M120 190 C103 174 22 119 22 66 C22 18 83 4 120 51 C157 4 218 18 218 66 C218 119 137 174 120 190Z" fill="url(#surpriseLoveGradientV12)" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+    <defs><linearGradient id="surpriseLoveGradientV13" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9bc4"/><stop offset="1" stop-color="#d92f79"/></linearGradient></defs>
+    <path d="M120 190 C103 174 22 119 22 66 C22 18 83 4 120 51 C157 4 218 18 218 66 C218 119 137 174 120 190Z" fill="url(#surpriseLoveGradientV13)" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
     <path d="M65 48 C78 32 99 36 108 49" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".85"/>
     <path d="M158 83 C169 69 184 70 190 82" fill="none" stroke="#ffd8e8" stroke-width="5" stroke-linecap="round" opacity=".9"/>
   </svg>`;
   content.style.opacity = '0';
   content.style.transform = 'translateY(10px)';
-  void content.offsetWidth;
   await runSurpriseFade(content, 'in', 1500, token);
 }
 </script>
