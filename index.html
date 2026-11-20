@@ -336,6 +336,18 @@ body {
 #surpriseContent { display:block !important; width:100% !important; max-width:100% !important; box-sizing:border-box !important; overflow-wrap:anywhere; word-break:normal; }
 #surpriseContent .equation-text { font-size:clamp(14px, 3.8vw, 19px) !important; line-height:1.55 !important; white-space:normal; }
 #surpriseContent .surprise-love { display:block !important; width:min(190px, 65%) !important; max-height:150px; height:auto !important; margin:0 auto !important; }
+/* Efek sapuan: setiap huruf muncul berurutan dari kiri ke kanan. */
+#surpriseContent .sweep-letter {
+  display:inline-block;
+  opacity:0;
+  animation: surpriseLetterSweep 260ms ease-out forwards;
+  animation-delay:var(--sweep-delay, 0ms);
+  will-change:opacity, transform, filter;
+}
+@keyframes surpriseLetterSweep {
+  0% { opacity:0; transform:translateY(5px); filter:blur(2px); }
+  100% { opacity:1; transform:translateY(0); filter:blur(0); }
+}
 
 
 /* V14: latar kuis memenuhi kanvas viewport; animasi surprise memakai transisi kompatibel WebView. */
@@ -905,6 +917,35 @@ async function runSurpriseFade(content, mode, duration, token) {
   content.style.transform = toTransform;
   return true;
 }
+function applySurpriseLetterSweep(root, sweepDuration) {
+  if (!root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const textNodes = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode);
+  const chars = [];
+  textNodes.forEach(node => {
+    const value = node.nodeValue || '';
+    if (!value.trim()) return;
+    const fragment = document.createDocumentFragment();
+    for (const character of Array.from(value)) {
+      if (/\s/u.test(character)) {
+        fragment.appendChild(document.createTextNode(character));
+      } else {
+        const span = document.createElement('span');
+        span.className = 'sweep-letter';
+        span.textContent = character;
+        fragment.appendChild(span);
+        chars.push(span);
+      }
+    }
+    node.parentNode.replaceChild(fragment, node);
+  });
+  const step = chars.length > 1 ? Math.min(34, sweepDuration / (chars.length - 1)) : 0;
+  chars.forEach((span, index) => {
+    span.style.setProperty('--sweep-delay', `${Math.round(index * step)}ms`);
+  });
+}
+
 async function showSurprise() {
   const box = document.getElementById('surprise');
   const content = document.getElementById('surpriseContent');
@@ -947,6 +988,10 @@ async function showSurprise() {
     if (token !== surpriseSequenceToken) return false;
     if (surpriseAnimation) { surpriseAnimation.cancel(); surpriseAnimation = null; }
     content.innerHTML = html;
+    // Sapuan huruf berjalan bersamaan dengan fade-in; pesan lebih panjang
+    // mendapat durasi sapuan lebih panjang, sedangkan persamaan lebih singkat.
+    const isEquation = content.querySelector('.equation-text') !== null;
+    applySurpriseLetterSweep(content, isEquation ? 1350 : 2600);
     content.style.opacity = '0';
     content.style.transform = 'translateY(10px)';
     if (!await runSurpriseFade(content, 'in', fadeMs, token)) return false;
