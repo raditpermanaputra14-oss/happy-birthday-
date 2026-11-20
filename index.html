@@ -240,23 +240,53 @@ body {
 .quiz-step.active { display:block; }
 .quiz-actions button:disabled { opacity:.38; cursor:not-allowed; transform:none; box-shadow:none; }
 \n
-/* Transisi gelap sinematik setelah nilai disubmit. */
+/* Lapisan transisi dibuat selalu berada di atas seluruh halaman. */
 #birthdayTransition {
-  position:fixed; inset:0; z-index:9998; background:#000;
-  opacity:0; pointer-events:none; transition:opacity 5s linear;
+  position:fixed !important;
+  inset:0 !important;
+  width:100vw !important;
+  height:100vh !important;
+  height:100dvh !important;
+  z-index:2147483000 !important;
+  background:#000 !important;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity 5s linear, visibility 0s linear 5s;
 }
-#birthdayTransition.active { opacity:1; pointer-events:auto; }
-#birthdayTransition.fade-out { opacity:0; }
+#birthdayTransition.active {
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transition:opacity 5s linear, visibility 0s linear;
+}
+#birthdayTransition.fade-out {
+  opacity:0;
+  visibility:visible;
+  pointer-events:none;
+  transition:opacity 5s linear, visibility 0s linear 5s;
+}
 #birthdayDateReveal {
-  position:fixed; z-index:10000; left:50%; top:50%;
-  width:min(94vw,900px); transform:translate(-50%,-50%);
-  color:#fff; text-align:center; font:700 clamp(30px,9vw,76px)/1.1 'DM Sans',sans-serif;
-  letter-spacing:.12em; text-shadow:0 0 24px #ffffff70;
-  opacity:0; clip-path:inset(0 100% 0 0); pointer-events:none;
+  position:fixed !important;
+  z-index:2147483001 !important;
+  left:50%;
+  top:50%;
+  width:min(94vw,900px);
+  transform:translate(-50%,-50%);
+  color:#fff !important;
+  text-align:center;
+  font:700 clamp(30px,9vw,76px)/1.1 'DM Sans',sans-serif;
+  letter-spacing:.12em;
+  text-shadow:0 0 24px #ffffff70;
+  opacity:0;
+  clip-path:inset(0 100% 0 0);
+  pointer-events:none;
+  white-space:nowrap;
+  will-change:clip-path,opacity;
 }
 #birthdayDateReveal.show {
   opacity:1;
-  animation:dateSweep var(--voice-duration,135.938s) linear forwards;
+  animation:dateSweep var(--voice-duration,138.938s) linear forwards;
 }
 @keyframes dateSweep {
   0% { clip-path:inset(0 100% 0 0); opacity:1; }
@@ -264,14 +294,31 @@ body {
   100% { clip-path:inset(0 0 0 100%); opacity:0; }
 }
 #volumeHint {
-  position:fixed; z-index:10001; left:50%; bottom:max(24px, env(safe-area-inset-bottom));
-  transform:translateX(-50%); width:max-content; max-width:90vw;
-  color:#fff; font:700 13px 'DM Sans',sans-serif; letter-spacing:.16em;
-  text-align:center; opacity:0; pointer-events:none;
+  position:fixed !important;
+  z-index:2147483002 !important;
+  left:50%;
+  bottom:max(24px, env(safe-area-inset-bottom));
+  transform:translateX(-50%);
+  width:max-content;
+  max-width:90vw;
+  color:#fff !important;
+  font:700 13px 'DM Sans',sans-serif;
+  letter-spacing:.16em;
+  text-align:center;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  white-space:nowrap;
+  text-shadow:0 1px 12px #000;
 }
-#volumeHint.show { opacity:1; }
-#volumeHint.needs-tap { pointer-events:auto; cursor:pointer; }
-
+#volumeHint.show {
+  opacity:1;
+  visibility:visible;
+}
+#volumeHint.needs-tap {
+  pointer-events:auto;
+  cursor:pointer;
+}
 </style>
 </head>
 <body>
@@ -486,80 +533,98 @@ function startBirthdayReveal() {
   const volumeHint = document.getElementById('volumeHint');
   const voice = document.getElementById('birthdayVoiceOver');
 
-  // Meminta izin playback dari interaksi tombol; audio tetap diam sampai layar benar-benar hitam.
-  voice.muted = true;
-  voice.volume = 1;
-  const primePlayback = voice.play();
-  if (primePlayback && typeof primePlayback.then === 'function') {
-    primePlayback.then(() => {
-      voice.pause();
-      voice.currentTime = 0;
-      voice.muted = false;
-    }).catch(() => {});
-  }
+  let voiceStarted = false;
+  let overlayClosed = false;
 
-  // Detik 0–5: fade in hitam. Tampilan quiz tetap di belakang lapisan gelap.
-  requestAnimationFrame(() => shade.classList.add('active'));
+  // Pastikan overlay tampil dan browser menghitung kondisi awal sebelum fade-in.
+  shade.classList.remove('fade-out');
+  shade.setAttribute('aria-hidden', 'false');
+  shade.style.visibility = 'visible';
+  shade.style.opacity = '0';
+  void shade.offsetWidth;
+  requestAnimationFrame(() => {
+    shade.classList.add('active');
+    shade.style.opacity = '';
+  });
 
-  // Pada akhir detik ke-5, layar sudah 100% hitam: baru tukar tampilan di balik layar gelap.
+  // Hanya setelah 5 detik penuh, tukar halaman di balik layar hitam.
   window.setTimeout(() => {
     quiz.classList.add('hide');
     quiz.setAttribute('aria-hidden', 'true');
-    panel.classList.remove('active');
+    if (panel) panel.classList.remove('active');
     document.body.classList.add('birthday-mode');
     birthday.classList.add('reveal');
     birthday.setAttribute('aria-hidden', 'false');
     window.scrollTo(0, 0);
   }, 5000);
 
-  // Mulai voice-over dan sapuan tanggal hanya setelah fade-in 5 detik selesai.
-  window.setTimeout(async () => {
-    const startVoice = async () => {
-      const voiceDuration = Number.isFinite(voice.duration) && voice.duration > 0
-        ? voice.duration : 138.938;
-      // 97.5% durasi untuk sapuan masuk; 2.5% terakhir (sekitar 3 detik untuk audio ini)
-      // dipakai untuk sapuan keluar tanggal sebelum voice-over berakhir.
-      dateText.style.setProperty('--voice-duration', `${voiceDuration}s`);
-      dateText.classList.add('show');
-      volumeHint.classList.add('show');
-      voice.currentTime = 0;
-      voice.muted = false;
-      voice.volume = 1;
-      try {
-        await voice.play();
-      } catch (error) {
-        // Jika browser menolak autoplay, ketukan pada petunjuk akan memulai audio.
-        volumeHint.textContent = 'KETUK DI SINI UNTUK MEMUTAR SUARA';
-        volumeHint.classList.add('needs-tap');
-        volumeHint.onclick = async () => {
-          try {
-            await voice.play();
-            volumeHint.textContent = 'KERASKAN SUARA';
-            volumeHint.classList.remove('needs-tap');
-            volumeHint.onclick = null;
-          } catch (_) {}
-        };
-      }
-    };
-
-    if (voice.readyState >= 1) {
-      startVoice();
-    } else {
-      voice.addEventListener('loadedmetadata', startVoice, { once: true });
-      voice.load();
-    }
-  }, 5000);
-
-  // Setelah audio selesai, gelapkan overlay memudar selama 5 detik untuk membuka halaman ulang tahun.
-  voice.addEventListener('ended', () => {
+  function closeDarkOverlay() {
+    if (overlayClosed) return;
+    overlayClosed = true;
     dateText.classList.remove('show');
     volumeHint.classList.remove('show', 'needs-tap');
     shade.classList.add('fade-out');
+    // Tetap hitam selama audio, lalu fade-out berlangsung 5 detik.
     window.setTimeout(() => {
       shade.classList.remove('active', 'fade-out');
+      shade.style.visibility = 'hidden';
+      shade.style.opacity = '0';
       shade.setAttribute('aria-hidden', 'true');
-    }, 5000);
-  }, { once: true });
+    }, 5100);
+  }
+
+  voice.addEventListener('ended', closeDarkOverlay, { once: true });
+
+  async function beginVoiceAndText() {
+    if (voiceStarted) return;
+    voiceStarted = true;
+
+    const voiceDuration = Number.isFinite(voice.duration) && voice.duration > 0
+      ? voice.duration : 138.938;
+    dateText.style.setProperty('--voice-duration', `${voiceDuration}s`);
+    dateText.classList.remove('show');
+    void dateText.offsetWidth;
+    dateText.classList.add('show');
+    volumeHint.textContent = 'KERASKAN SUARA';
+    volumeHint.classList.add('show');
+
+    voice.currentTime = 0;
+    voice.muted = false;
+    voice.volume = 1;
+    try {
+      await voice.play();
+    } catch (error) {
+      // Jika autoplay diblokir browser, layar tetap hitam sampai pengguna mengetuk.
+      volumeHint.textContent = 'KETUK DI SINI UNTUK MEMUTAR SUARA';
+      volumeHint.classList.add('needs-tap');
+      volumeHint.onclick = async () => {
+        try {
+          await voice.play();
+          volumeHint.textContent = 'KERASKAN SUARA';
+          volumeHint.classList.remove('needs-tap');
+          volumeHint.onclick = null;
+        } catch (_) {
+          volumeHint.textContent = 'KETUK UNTUK MENCOBA MEMUTAR SUARA';
+        }
+      };
+    }
+  }
+
+  // Audio dan tulisan baru dimulai setelah fade-in 5 detik selesai.
+  window.setTimeout(() => {
+    if (voice.readyState >= 1) {
+      beginVoiceAndText();
+    } else {
+      voice.addEventListener('loadedmetadata', beginVoiceAndText, { once: true });
+      voice.addEventListener('error', () => {
+        volumeHint.textContent = 'AUDIO TIDAK DAPAT DIMUAT';
+        volumeHint.classList.add('show');
+      }, { once: true });
+      voice.load();
+      // Fallback agar tulisan tidak hilang jika metadata terlambat dari browser.
+      window.setTimeout(beginVoiceAndText, 1500);
+    }
+  }, 5000);
 }
 
 function revealBirthday() {
