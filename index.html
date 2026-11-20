@@ -56,7 +56,7 @@ body {
 
 /* Halaman quiz memakai tema tersendiri, tidak mengikuti warna birthday. */
 body { background:linear-gradient(135deg,#101827,#202c46 55%,#33415f); color:#eef2ff; }
-body.birthday-mode {
+html.birthday-mode, body.birthday-mode {
   color:var(--ink);
   background:linear-gradient(135deg,var(--bg1),var(--bg2) 55%,var(--bg3));
   animation:paletteShift 10s ease-in-out infinite;
@@ -179,7 +179,7 @@ footer { font-size:11px; color:var(--footer); margin-top:30px; letter-spacing:.0
 }
 
 /* Quiz page height follows its content; no empty viewport-sized section. */
-html { height:auto !important; min-height:0 !important; }
+html { height:auto !important; min-height:100% !important; background:linear-gradient(135deg,#101827,#202c46 55%,#33415f) fixed !important; }
 body {
   display:block !important;
   height:auto !important;
@@ -331,12 +331,14 @@ body {
 }
 
 /* V12: konten menggunakan keyframe fade yang dipicu ulang untuk setiap panel. */
-#surprise.is-open { display:flex !important; align-items:center !important; justify-content:center !important; }
+#surprise.is-open { display:flex !important; visibility:visible !important; align-items:center !important; justify-content:center !important; }
+#surprise.is-open #surpriseContent { visibility:visible !important; }
 #surpriseContent { display:block !important; width:100% !important; max-width:100% !important; box-sizing:border-box !important; overflow-wrap:anywhere; word-break:normal; }
 #surpriseContent .equation-text { font-size:clamp(14px, 3.8vw, 19px) !important; line-height:1.55 !important; white-space:normal; }
 #surpriseContent .surprise-love { display:block !important; width:min(190px, 65%) !important; max-height:150px; height:auto !important; margin:0 auto !important; }
 
 
+/* V14: latar kuis memenuhi kanvas viewport; animasi surprise memakai transisi kompatibel WebView. */
 /* V13: cegah halaman bergeser selama layar gelap, termasuk gesture sentuh. */
 html.birthday-scroll-locked, body.birthday-scroll-locked { overflow:hidden !important; overscroll-behavior:none !important; touch-action:none !important; }
 
@@ -723,6 +725,7 @@ function startBirthdayReveal() {
     quiz.classList.add('hide');
     quiz.setAttribute('aria-hidden', 'true');
     if (panel) panel.classList.remove('active');
+    document.documentElement.classList.add('birthday-mode');
     document.body.classList.add('birthday-mode');
     birthday.classList.add('reveal');
     birthday.setAttribute('aria-hidden', 'false');
@@ -847,10 +850,12 @@ function revealBirthday() {
 let surpriseSequenceToken = 0;
 let surpriseTimers = [];
 let surpriseAnimation = null;
+let surpriseFadeTimer = null;
 
 function clearSurpriseTimers() {
   surpriseTimers.forEach(id => clearTimeout(id));
   surpriseTimers = [];
+  if (surpriseFadeTimer) { clearTimeout(surpriseFadeTimer); surpriseFadeTimer = null; }
 }
 function waitSurprise(ms, token) {
   return new Promise(resolve => {
@@ -863,34 +868,41 @@ function waitSurprise(ms, token) {
 }
 async function runSurpriseFade(content, mode, duration, token) {
   if (token !== surpriseSequenceToken) return false;
-  if (surpriseAnimation) {
-    surpriseAnimation.cancel();
-    surpriseAnimation = null;
-  }
+
   const isIn = mode === 'in';
-  const from = isIn ? 0 : 1;
-  const to = isIn ? 1 : 0;
+  const fromOpacity = isIn ? '0' : '1';
+  const toOpacity = isIn ? '1' : '0';
+  const fromTransform = isIn ? 'translateY(10px)' : 'translateY(0)';
+  const toTransform = isIn ? 'translateY(0)' : 'translateY(-8px)';
+
+  // Tidak memakai Element.animate()/Animation.finished, agar tetap berjalan
+  // pada browser Android/WebView yang implementasi Web Animations-nya terbatas.
   content.style.display = 'block';
-  content.style.opacity = String(from);
-  content.style.transform = isIn ? 'translateY(10px)' : 'translateY(0)';
-  // Web Animations API menghindari aturan CSS lama yang sempat mematikan keyframe.
-  surpriseAnimation = content.animate(
-    [
-      { opacity: from, transform: isIn ? 'translateY(10px)' : 'translateY(0)' },
-      { opacity: to, transform: isIn ? 'translateY(0)' : 'translateY(-8px)' }
-    ],
-    { duration, easing: 'ease', fill: 'forwards' }
-  );
-  try {
-    await surpriseAnimation.finished;
-  } catch (_) {
-    return false;
-  }
+  content.style.visibility = 'visible';
+  content.style.transition = 'none';
+  content.style.opacity = fromOpacity;
+  content.style.transform = fromTransform;
+  void content.offsetWidth;
+
+  await new Promise(resolve => requestAnimationFrame(() => resolve()));
   if (token !== surpriseSequenceToken) return false;
-  surpriseAnimation.cancel();
-  surpriseAnimation = null;
-  content.style.opacity = String(to);
-  content.style.transform = isIn ? 'translateY(0)' : 'translateY(-8px)';
+
+  content.style.transition = `opacity ${duration}ms ease, transform ${duration}ms ease`;
+  content.style.opacity = toOpacity;
+  content.style.transform = toTransform;
+
+  await new Promise(resolve => {
+    if (surpriseFadeTimer) clearTimeout(surpriseFadeTimer);
+    surpriseFadeTimer = setTimeout(() => {
+      surpriseFadeTimer = null;
+      resolve();
+    }, duration + 80);
+  });
+
+  if (token !== surpriseSequenceToken) return false;
+  content.style.transition = 'none';
+  content.style.opacity = toOpacity;
+  content.style.transform = toTransform;
   return true;
 }
 async function showSurprise() {
@@ -903,7 +915,9 @@ async function showSurprise() {
     clearSurpriseTimers();
     if (surpriseAnimation) { surpriseAnimation.cancel(); surpriseAnimation = null; }
     content.style.opacity = '0';
-    content.style.animation = 'none';
+    content.style.transition = 'none';
+    content.style.visibility = 'hidden';
+    box.style.visibility = 'hidden';
     box.classList.remove('is-open', 'is-visible');
     box.setAttribute('aria-hidden', 'true');
     return;
@@ -914,6 +928,11 @@ async function showSurprise() {
   clearSurpriseTimers();
   if (surpriseAnimation) { surpriseAnimation.cancel(); surpriseAnimation = null; }
   box.style.display = 'flex';
+  box.style.visibility = 'visible';
+  content.style.display = 'block';
+  content.style.visibility = 'visible';
+  content.style.transition = 'none';
+  content.style.opacity = '0';
   box.classList.add('is-open', 'is-visible');
   box.setAttribute('aria-hidden', 'false');
 
