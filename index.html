@@ -257,7 +257,7 @@ body {
 }
 #birthdayLineArt {
   position:fixed !important; inset:0 !important; width:100vw !important; height:100vh !important;
-  height:100dvh !important; z-index:2147483001 !important; display:block;
+  height:100dvh !important; z-index:2147483001 !important; display:block; background:transparent !important;
   opacity:0; visibility:hidden; pointer-events:none;
 }
 #birthdayDateReveal {
@@ -479,7 +479,6 @@ function finishQuiz() {
     }
     result.classList.add('show');
     window.scrollTo(0, 0);
-    startBirthdayLineArt();
   }, 5000);
 }
 
@@ -630,6 +629,8 @@ function startBirthdayReveal() {
     birthday.classList.add('reveal');
     birthday.setAttribute('aria-hidden', 'false');
     window.scrollTo(0, 0);
+    // Mulai gambar garis setelah layar hitam 100% dan pergantian halaman selesai.
+    startBirthdayLineArt();
   }, 5000);
 
   function closeDarkOverlay() {
@@ -663,8 +664,8 @@ function startBirthdayReveal() {
     dateText.style.setProperty('--voice-duration', `${voiceDuration}s`);
     dateText.classList.remove('show');
     void dateText.offsetWidth;
-    dateText.style.setProperty('z-index', '2147483001', 'important');
-    volumeHint.style.setProperty('z-index', '2147483002', 'important');
+    dateText.style.setProperty('z-index', '2147483002', 'important');
+    volumeHint.style.setProperty('z-index', '2147483003', 'important');
     dateText.classList.add('show');
     volumeHint.textContent = 'KERASKAN SUARA';
     volumeHint.classList.add('show');
