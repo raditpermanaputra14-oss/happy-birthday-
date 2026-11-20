@@ -338,15 +338,14 @@ body {
 #surpriseContent .surprise-love { display:block !important; width:min(190px, 65%) !important; max-height:150px; height:auto !important; margin:0 auto !important; }
 /* Efek sapuan: setiap huruf muncul berurutan dari kiri ke kanan. */
 #surpriseContent .sweep-letter {
-  display:inline-block;
+  display:inline;
   opacity:0;
-  animation: surpriseLetterSweep 260ms ease-out forwards;
+  animation: surpriseLetterSweep 180ms linear forwards;
   animation-delay:var(--sweep-delay, 0ms);
-  will-change:opacity, transform, filter;
 }
 @keyframes surpriseLetterSweep {
-  0% { opacity:0; transform:translateY(5px); filter:blur(2px); }
-  100% { opacity:1; transform:translateY(0); filter:blur(0); }
+  from { opacity:0; }
+  to { opacity:1; }
 }
 
 
@@ -940,7 +939,7 @@ function applySurpriseLetterSweep(root, sweepDuration) {
     }
     node.parentNode.replaceChild(fragment, node);
   });
-  const step = chars.length > 1 ? Math.min(34, sweepDuration / (chars.length - 1)) : 0;
+  const step = chars.length > 1 ? Math.min(48, sweepDuration / (chars.length - 1)) : 0;
   chars.forEach((span, index) => {
     span.style.setProperty('--sweep-delay', `${Math.round(index * step)}ms`);
   });
@@ -950,6 +949,13 @@ async function showSurprise() {
   const box = document.getElementById('surprise');
   const content = document.getElementById('surpriseContent');
   if (!box || !content) return;
+
+  // Tombol hanya menjadi pemicu; setelah ditekan tidak ditampilkan lagi.
+  const senderButton = document.querySelector('button[onclick="showSurprise()"]');
+  if (senderButton) {
+    senderButton.hidden = true;
+    senderButton.setAttribute('aria-hidden', 'true');
+  }
 
   if (box.classList.contains('is-open')) {
     surpriseSequenceToken++;
@@ -991,7 +997,7 @@ async function showSurprise() {
     // Sapuan huruf berjalan bersamaan dengan fade-in; pesan lebih panjang
     // mendapat durasi sapuan lebih panjang, sedangkan persamaan lebih singkat.
     const isEquation = content.querySelector('.equation-text') !== null;
-    applySurpriseLetterSweep(content, isEquation ? 1350 : 2600);
+    applySurpriseLetterSweep(content, isEquation ? 1350 : 7600);
     content.style.opacity = '0';
     content.style.transform = 'translateY(10px)';
     if (!await runSurpriseFade(content, 'in', fadeMs, token)) return false;
@@ -1000,7 +1006,7 @@ async function showSurprise() {
     return token === surpriseSequenceToken;
   }
 
-  if (!await showCard(birthdayMessage, 30000, 1500)) return;
+  if (!await showCard(birthdayMessage, 10000, 1000)) return;
   if (!await showCard(`<div class="equation-text">${equations[0]}</div>`, 10000, 1000)) return;
   if (!await showCard(`<div class="equation-text">${equations[1]}</div>`, 10000, 1000)) return;
   if (!await showCard(`<div class="equation-text">${equations[2]}</div>`, 10000, 1000)) return;
