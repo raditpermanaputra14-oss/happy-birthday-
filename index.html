@@ -239,42 +239,32 @@ body {
 .quiz-step[hidden] { display:none !important; }
 .quiz-step.active { display:block; }
 .quiz-actions button:disabled { opacity:.38; cursor:not-allowed; transform:none; box-shadow:none; }
-\n
-/* Lapisan gelap: selalu di atas seluruh konten, tanpa transisi visibility. */
+
+
+/* Lapisan transisi: animasi opacity dikendalikan JavaScript agar stabil di browser mobile. */
 #birthdayTransition {
   position:fixed !important;
   inset:0 !important;
-  width:100% !important;
+  width:100vw !important;
   height:100vh !important;
   height:100dvh !important;
   display:block !important;
-  z-index:2147483647 !important;
-  background:rgb(0,0,0) !important;
+  z-index:2147483000 !important;
+  background:#000 !important;
   opacity:0;
-  visibility:visible !important;
-  pointer-events:none !important;
-  transition:opacity 5s linear !important;
-  will-change:opacity;
+  visibility:hidden;
+  pointer-events:none;
 }
-#birthdayTransition.active { opacity:1 !important; }
-#birthdayTransition.fade-out { opacity:0 !important; }
-
 #birthdayDateReveal {
   position:fixed !important;
-  z-index:2147483646 !important;
-  left:50%; top:50%;
-  width:min(94vw,900px);
+  z-index:2147483001 !important;
+  left:50%; top:50%; width:min(94vw,900px);
   transform:translate(-50%,-50%);
-  color:#fff !important;
-  text-align:center;
+  color:#fff !important; text-align:center;
   font:700 clamp(30px,9vw,76px)/1.1 'DM Sans',sans-serif;
-  letter-spacing:.12em;
-  text-shadow:0 0 24px #ffffff70;
-  opacity:0;
-  clip-path:inset(0 100% 0 0);
-  pointer-events:none;
-  white-space:nowrap;
-  will-change:clip-path,opacity;
+  letter-spacing:.12em; text-shadow:0 0 24px #ffffff70;
+  opacity:0; clip-path:inset(0 100% 0 0);
+  pointer-events:none; white-space:nowrap; will-change:clip-path,opacity;
 }
 #birthdayDateReveal.show {
   opacity:1;
@@ -286,20 +276,16 @@ body {
   100% { clip-path:inset(0 0 0 100%); opacity:0; }
 }
 #volumeHint {
-  position:fixed !important;
-  z-index:2147483646 !important;
-  left:50%;
-  bottom:max(24px, env(safe-area-inset-bottom));
-  transform:translateX(-50%);
-  width:max-content; max-width:90vw;
-  color:#fff !important;
-  font:700 13px 'DM Sans',sans-serif;
-  letter-spacing:.16em; text-align:center;
-  opacity:0; visibility:hidden; pointer-events:none;
-  white-space:nowrap; text-shadow:0 1px 12px #000;
+  position:fixed !important; z-index:2147483002 !important;
+  left:50%; bottom:max(24px, env(safe-area-inset-bottom));
+  transform:translateX(-50%); width:max-content; max-width:90vw;
+  color:#fff !important; font:700 13px 'DM Sans',sans-serif;
+  letter-spacing:.16em; text-align:center; opacity:0; visibility:hidden;
+  pointer-events:none; white-space:nowrap; text-shadow:0 1px 12px #000;
 }
 #volumeHint.show { opacity:1; visibility:visible; }
 #volumeHint.needs-tap { pointer-events:auto; cursor:pointer; }
+
 </style>
 </head>
 <body>
@@ -517,15 +503,22 @@ function startBirthdayReveal() {
   let voiceStarted = false;
   let overlayClosed = false;
 
-  // Siapkan kondisi awal secara eksplisit, lalu mulai fade-in 5 detik.
+  // Tampilkan lapisan hitam secara eksplisit, lalu animasikan opacity dengan Web Animations API.
   shade.classList.remove('active', 'fade-out');
   shade.setAttribute('aria-hidden', 'false');
   shade.style.setProperty('display', 'block', 'important');
-  shade.style.setProperty('opacity', '0');
-  void shade.offsetHeight; // paksa browser menerapkan opacity 0
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => shade.classList.add('active'));
-  });
+  shade.style.setProperty('position', 'fixed', 'important');
+  shade.style.setProperty('inset', '0', 'important');
+  shade.style.setProperty('z-index', '2147483000', 'important');
+  shade.style.setProperty('background', '#000', 'important');
+  shade.style.visibility = 'visible';
+  shade.style.opacity = '0';
+  shade.style.pointerEvents = 'auto';
+  const fadeInAnimation = shade.animate(
+    [{ opacity: 0 }, { opacity: 1 }],
+    { duration: 5000, easing: 'linear', fill: 'forwards' }
+  );
+  fadeInAnimation.onfinish = () => { shade.style.opacity = '1'; };
 
   // Hanya setelah 5 detik penuh, tukar halaman di balik layar hitam.
   window.setTimeout(() => {
@@ -543,15 +536,18 @@ function startBirthdayReveal() {
     overlayClosed = true;
     dateText.classList.remove('show');
     volumeHint.classList.remove('show', 'needs-tap');
-    shade.classList.remove('active');
-    // Tetap hitam selama audio, lalu fade-out berlangsung tepat 5 detik.
-    shade.classList.add('fade-out');
-    window.setTimeout(() => {
-      shade.classList.remove('fade-out');
-      shade.style.setProperty('display', 'none', 'important');
+    // Fade-out dijalankan langsung dari opacity 1 agar tidak bergantung pada CSS transition.
+    shade.style.opacity = '1';
+    const fadeOutAnimation = shade.animate(
+      [{ opacity: 1 }, { opacity: 0 }],
+      { duration: 5000, easing: 'linear', fill: 'forwards' }
+    );
+    fadeOutAnimation.onfinish = () => {
       shade.style.opacity = '0';
+      shade.style.visibility = 'hidden';
+      shade.style.pointerEvents = 'none';
       shade.setAttribute('aria-hidden', 'true');
-    }, 5100);
+    };
   }
 
   voice.addEventListener('ended', closeDarkOverlay, { once: true });
@@ -565,6 +561,8 @@ function startBirthdayReveal() {
     dateText.style.setProperty('--voice-duration', `${voiceDuration}s`);
     dateText.classList.remove('show');
     void dateText.offsetWidth;
+    dateText.style.setProperty('z-index', '2147483001', 'important');
+    volumeHint.style.setProperty('z-index', '2147483002', 'important');
     dateText.classList.add('show');
     volumeHint.textContent = 'KERASKAN SUARA';
     volumeHint.classList.add('show');
