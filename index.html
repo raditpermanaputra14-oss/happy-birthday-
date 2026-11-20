@@ -278,6 +278,16 @@ body {
   opacity:1;
   animation:dateSweep var(--voice-duration,138.938s) linear forwards;
 }
+#birthdayDateReveal.fade-in-question {
+  opacity:1 !important;
+  clip-path:inset(0 100% 0 0);
+  animation:questionFadeSweep 5s linear forwards !important;
+}
+@keyframes questionFadeSweep {
+  0% { clip-path:inset(0 100% 0 0); opacity:0; }
+  12% { opacity:1; }
+  100% { clip-path:inset(0 0 0 0); opacity:1; }
+}
 @keyframes dateSweep {
   0% { clip-path:inset(0 100% 0 0); opacity:1; }
   97.5% { clip-path:inset(0 0 0 0); opacity:1; }
@@ -743,11 +753,25 @@ function startBirthdayReveal() {
   shade.style.visibility = 'visible';
   shade.style.opacity = '0';
   shade.style.pointerEvents = 'auto';
+  // Pesan tampil bersamaan dengan fade-in gelap selama 5 detik.
+  dateText.classList.remove('show', 'fade-in-question');
+  dateText.style.animation = 'none';
+  dateText.style.opacity = '0';
+  dateText.style.clipPath = 'inset(0 100% 0 0)';
+  void dateText.offsetWidth;
+  dateText.style.animation = '';
+  dateText.classList.add('fade-in-question');
+
   const fadeInAnimation = shade.animate(
     [{ opacity: 0 }, { opacity: 1 }],
     { duration: 5000, easing: 'linear', fill: 'forwards' }
   );
-  fadeInAnimation.onfinish = () => { shade.style.opacity = '1'; };
+  fadeInAnimation.onfinish = () => {
+    shade.style.opacity = '1';
+    dateText.classList.remove('fade-in-question');
+    dateText.style.opacity = '0';
+    dateText.style.clipPath = 'inset(0 0 0 0)';
+  };
 
   // Hanya setelah 5 detik penuh, tukar halaman di balik layar hitam.
   window.setTimeout(() => {
@@ -816,11 +840,11 @@ function startBirthdayReveal() {
     const voiceDuration = Number.isFinite(voice.duration) && voice.duration > 0
       ? voice.duration : 138.938;
     dateText.style.setProperty('--voice-duration', `${voiceDuration}s`);
-    dateText.classList.remove('show');
+    dateText.classList.remove('show', 'fade-in-question');
+    dateText.style.opacity = '0';
     void dateText.offsetWidth;
     dateText.style.setProperty('z-index', '2147483002', 'important');
     volumeHint.style.setProperty('z-index', '2147483003', 'important');
-    dateText.classList.add('show');
     volumeHint.textContent = 'KERASKAN SUARA';
     volumeHint.classList.add('show');
 
