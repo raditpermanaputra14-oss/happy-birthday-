@@ -800,14 +800,16 @@ function startBirthdayReveal() {
   );
   fadeInAnimation.onfinish = () => {
     shade.style.opacity = '1';
-    // Setelah layar hitam 100%, pertanyaan menghilang dan tanggal muncul.
+    // Pada detik ke-5 layar sudah hitam 100%; tanggal mulai fade-in pada detik ke-6.
     questionText.style.opacity = '0';
     questionText.style.setProperty('visibility', 'hidden', 'important');
     questionAnimation.cancel();
-    dateText.style.setProperty('visibility', 'visible', 'important');
-    dateText.style.opacity = '1';
-    dateText.style.clipPath = 'inset(0 0 0 0)';
-    dateText.classList.add('show');
+    window.setTimeout(() => {
+      dateText.style.setProperty('visibility', 'visible', 'important');
+      dateText.style.opacity = '1';
+      dateText.style.clipPath = 'inset(0 100% 0 0)';
+      dateText.classList.add('show');
+    }, 1000);
   };
 
   // Hanya setelah 5 detik penuh, tukar halaman di balik layar hitam.
@@ -880,7 +882,9 @@ function startBirthdayReveal() {
 
     const voiceDuration = Number.isFinite(voice.duration) && voice.duration > 0
       ? voice.duration : 138.938;
-    dateText.style.setProperty('--voice-duration', `${voiceDuration}s`);
+    // Animasi tanggal mulai 1 detik setelah audio; kurangi durasinya 1 detik
+    // agar posisi fade-out tetap sama dan selesai tepat saat audio berakhir.
+    dateText.style.setProperty('--voice-duration', `${Math.max(1, voiceDuration - 1)}s`);
     dateText.style.setProperty('z-index', '2147483002', 'important');
     volumeHint.style.setProperty('z-index', '2147483003', 'important');
     volumeHint.textContent = 'KERASKAN SUARA';
