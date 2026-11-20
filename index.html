@@ -330,6 +330,12 @@ body {
   #surpriseContent { font-size:14px; }
 }
 
+/* V12: konten menggunakan keyframe fade yang dipicu ulang untuk setiap panel. */
+#surprise.is-open { display:flex !important; align-items:center !important; justify-content:center !important; }
+#surpriseContent { display:block !important; width:100% !important; max-width:100% !important; box-sizing:border-box !important; overflow-wrap:anywhere; word-break:normal; }
+#surpriseContent .equation-text { font-size:clamp(14px, 3.8vw, 19px) !important; line-height:1.55 !important; white-space:normal; }
+#surpriseContent .surprise-love { display:block !important; width:min(190px, 65%) !important; max-height:150px; height:auto !important; margin:0 auto !important; }
+
 </style>
 </head>
 <body>
@@ -789,22 +795,44 @@ function revealBirthday() {
   window.scrollTo(0, 0);
 }
 
-let surpriseTimers = [];
 let surpriseSequenceToken = 0;
-let surpriseAnimation = null;
+let surpriseTimers = [];
 
-function showSurprise() {
+function clearSurpriseTimers() {
+  surpriseTimers.forEach(id => clearTimeout(id));
+  surpriseTimers = [];
+}
+function waitSurprise(ms, token) {
+  return new Promise(resolve => {
+    const id = setTimeout(() => {
+      surpriseTimers = surpriseTimers.filter(x => x !== id);
+      resolve(token === surpriseSequenceToken);
+    }, ms);
+    surpriseTimers.push(id);
+  });
+}
+async function runSurpriseFade(content, mode, duration, token) {
+  if (token !== surpriseSequenceToken) return false;
+  content.style.animation = 'none';
+  content.style.opacity = mode === 'in' ? '0' : '1';
+  content.style.transform = mode === 'in' ? 'translateY(10px)' : 'translateY(0)';
+  void content.offsetWidth;
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  if (token !== surpriseSequenceToken) return false;
+  content.style.animation = mode === 'in'
+    ? `surpriseFadeIn ${duration}ms ease both`
+    : `surpriseFadeOut ${duration}ms ease both`;
+  return await waitSurprise(duration + 80, token);
+}
+async function showSurprise() {
   const box = document.getElementById('surprise');
   const content = document.getElementById('surpriseContent');
   if (!box || !content) return;
 
-  // Klik kedua menutup kotak dan membatalkan semua animasi/jadwal.
   if (box.classList.contains('is-open')) {
     surpriseSequenceToken++;
-    surpriseTimers.forEach(clearTimeout);
-    surpriseTimers = [];
-    if (surpriseAnimation) surpriseAnimation.cancel();
-    surpriseAnimation = null;
+    clearSurpriseTimers();
+    content.style.animation = 'none';
     content.style.opacity = '0';
     box.classList.remove('is-open', 'is-visible');
     box.setAttribute('aria-hidden', 'true');
@@ -813,14 +841,9 @@ function showSurprise() {
 
   surpriseSequenceToken++;
   const token = surpriseSequenceToken;
-  surpriseTimers.forEach(clearTimeout);
-  surpriseTimers = [];
-  if (surpriseAnimation) surpriseAnimation.cancel();
-  surpriseAnimation = null;
-
-  box.style.display = '';
-  box.classList.add('is-open');
-  box.classList.add('is-visible');
+  clearSurpriseTimers();
+  box.style.display = 'flex';
+  box.classList.add('is-open', 'is-visible');
   box.setAttribute('aria-hidden', 'false');
 
   const birthdayMessage = `Hai, INK<br>Selamat ulang tahun ya. Semoga kedepannya kamu bisa menjadi lebih baik, dan tuhan selalu menjagamu. Maaf gak bisa kasih apa-apa, cuma bisa buat ini. Semoga kamu menyukainya. 😊`;
@@ -830,77 +853,37 @@ function showSurprise() {
     `1 dekade= 10 tahun<br><br>2000+2(10)+6=<br>2000+20+6=<br>2026`
   ];
 
-  function animateOpacity(from, to, duration, easing='ease') {
-    if (surpriseAnimation) surpriseAnimation.cancel();
-    // Set a definite starting state so each animation restarts on every device.
-    content.style.opacity = String(from);
-    content.style.transform = from === 0 ? 'translateY(9px)' : 'translateY(0)';
-    if (typeof content.animate === 'function') {
-      surpriseAnimation = content.animate(
-        [
-          { opacity: from, transform: from === 0 ? 'translateY(9px)' : 'translateY(0)' },
-          { opacity: to, transform: to === 0 ? 'translateY(-9px)' : 'translateY(0)' }
-        ],
-        { duration, easing, fill: 'forwards' }
-      );
-      surpriseAnimation.onfinish = () => {
-        if (token !== surpriseSequenceToken) return;
-        content.style.opacity = String(to);
-        content.style.transform = to === 0 ? 'translateY(-9px)' : 'translateY(0)';
-      };
-    } else {
-      // Fallback untuk browser lama tanpa Web Animations API.
-      content.style.transition = `opacity ${duration}ms ${easing}, transform ${duration}ms ${easing}`;
-      requestAnimationFrame(() => {
-        content.style.opacity = String(to);
-        content.style.transform = to === 0 ? 'translateY(-9px)' : 'translateY(0)';
-      });
-    }
-  }
-
-  function displayCard(html, duration, fadeDuration, at) {
-    surpriseTimers.push(window.setTimeout(() => {
-      if (token !== surpriseSequenceToken) return;
-      if (surpriseAnimation) surpriseAnimation.cancel();
-      content.innerHTML = html;
-      content.style.transition = 'none';
-      content.style.opacity = '0';
-      content.style.transform = 'translateY(9px)';
-      // Force layout so the next fade-in always starts from opacity 0.
-      void content.offsetWidth;
-      animateOpacity(0, 1, fadeDuration);
-
-      surpriseTimers.push(window.setTimeout(() => {
-        if (token !== surpriseSequenceToken) return;
-        animateOpacity(1, 0, fadeDuration);
-      }, Math.max(0, duration - fadeDuration)));
-    }, at));
-  }
-
-  // Setiap durasi sudah termasuk fade-in dan fade-out.
-  displayCard(birthdayMessage, 30000, 1500, 0);
-  displayCard(`<div class="equation-text">${equations[0]}</div>`, 10000, 1000, 30000);
-  displayCard(`<div class="equation-text">${equations[1]}</div>`, 10000, 1000, 40000);
-  displayCard(`<div class="equation-text">${equations[2]}</div>`, 10000, 1000, 50000);
-
-  // Setelah total 60 detik, gambar LOVE masuk dengan fade-in dan menetap.
-  const loveHtml = `<svg class="surprise-love" viewBox="0 0 240 210" role="img" aria-label="Gambar love berwarna merah muda">
-    <defs><linearGradient id="surpriseLoveGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8db8"/><stop offset="1" stop-color="#d92f79"/></linearGradient></defs>
-    <path d="M120 190 C103 174 22 119 22 66 C22 18 83 4 120 51 C157 4 218 18 218 66 C218 119 137 174 120 190Z" fill="url(#surpriseLoveGradient)" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
-    <path d="M65 48 C78 32 99 36 108 49" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".8"/>
-  </svg>`;
-  surpriseTimers.push(window.setTimeout(() => {
-    if (token !== surpriseSequenceToken) return;
-    if (surpriseAnimation) surpriseAnimation.cancel();
-    content.innerHTML = loveHtml;
-    content.style.transition = 'none';
+  async function showCard(html, totalMs, fadeMs) {
+    if (token !== surpriseSequenceToken) return false;
+    content.style.animation = 'none';
+    content.innerHTML = html;
     content.style.opacity = '0';
-    content.style.transform = 'translateY(9px)';
+    content.style.transform = 'translateY(10px)';
     void content.offsetWidth;
-    animateOpacity(0, 1, 1500);
-  }, 60000));
-}
+    if (!await runSurpriseFade(content, 'in', fadeMs, token)) return false;
+    if (!await waitSurprise(Math.max(0, totalMs - fadeMs * 2), token)) return false;
+    if (!await runSurpriseFade(content, 'out', fadeMs, token)) return false;
+    return token === surpriseSequenceToken;
+  }
 
+  if (!await showCard(birthdayMessage, 30000, 1500)) return;
+  if (!await showCard(`<div class="equation-text">${equations[0]}</div>`, 10000, 1000)) return;
+  if (!await showCard(`<div class="equation-text">${equations[1]}</div>`, 10000, 1000)) return;
+  if (!await showCard(`<div class="equation-text">${equations[2]}</div>`, 10000, 1000)) return;
+  if (token !== surpriseSequenceToken) return;
+
+  content.style.animation = 'none';
+  content.innerHTML = `<svg class="surprise-love" viewBox="0 0 240 210" role="img" aria-label="Gambar love berwarna merah muda">
+    <defs><linearGradient id="surpriseLoveGradientV12" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9bc4"/><stop offset="1" stop-color="#d92f79"/></linearGradient></defs>
+    <path d="M120 190 C103 174 22 119 22 66 C22 18 83 4 120 51 C157 4 218 18 218 66 C218 119 137 174 120 190Z" fill="url(#surpriseLoveGradientV12)" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M65 48 C78 32 99 36 108 49" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".85"/>
+    <path d="M158 83 C169 69 184 70 190 82" fill="none" stroke="#ffd8e8" stroke-width="5" stroke-linecap="round" opacity=".9"/>
+  </svg>`;
+  content.style.opacity = '0';
+  content.style.transform = 'translateY(10px)';
+  void content.offsetWidth;
+  await runSurpriseFade(content, 'in', 1500, token);
+}
 </script>
 </body>
 </html>
