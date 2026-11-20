@@ -291,6 +291,46 @@ body {
 #volumeHint.show { opacity:1; visibility:visible; }
 #volumeHint.needs-tap { pointer-events:auto; cursor:pointer; }
 
+
+/* Konten kotak kejutan: ukuran adaptif dan pergantian tulisan dengan fade. */
+#surprise {
+  display:none;
+  box-sizing:border-box;
+  width:min(480px, calc(100% - 8px));
+  max-width:480px;
+  min-height:190px;
+  margin:22px auto 0;
+  padding:clamp(16px, 4vw, 24px);
+  border-radius:18px;
+  overflow:hidden;
+  text-align:center;
+  line-height:1.65;
+  overflow-wrap:anywhere;
+}
+#surprise.is-open { display:flex; align-items:center; justify-content:center; }
+#surpriseContent {
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
+  font-size:clamp(14px, 3.6vw, 17px);
+  font-weight:600;
+  line-height:1.65;
+  opacity:0;
+  transform:translateY(8px);
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+#surpriseContent.fade-in { animation:surpriseFadeIn var(--surprise-fade-duration,1500ms) ease forwards; }
+#surpriseContent.fade-out { animation:surpriseFadeOut var(--surprise-fade-duration,1500ms) ease forwards; }
+#surpriseContent .equation-text { font-family:'DM Sans',sans-serif; font-size:clamp(15px,4vw,20px); line-height:1.55; letter-spacing:.015em; }
+#surpriseContent .surprise-love { display:block; width:min(190px,65%); height:auto; margin:0 auto; filter:drop-shadow(0 8px 14px #d92f7940); }
+@keyframes surpriseFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@keyframes surpriseFadeOut { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(-8px); } }
+@media(max-width:480px) {
+  #surprise { min-height:180px; padding:16px 14px; }
+  #surpriseContent { font-size:14px; }
+}
+
 </style>
 </head>
 <body>
@@ -394,8 +434,9 @@ body {
     </p>
     <div class="signature">With lots of love ♡</div>
     <button type="button" onclick="showSurprise()">Surat pengirim</button>
-    <div id="surprise">🌷 You are blooming in your own beautiful way!<br>
-      Jangan takut bermimpi besar. Dunia punya banyak hal indah untuk kamu jelajahi. 💕</div>
+    <div id="surprise" aria-live="polite">
+      <div id="surpriseContent" class="surprise-content"></div>
+    </div>
     <footer>AEC</footer>
   </section>
 </main>
@@ -749,9 +790,79 @@ function revealBirthday() {
   window.scrollTo(0, 0);
 }
 
+let surpriseTimers = [];
+let surpriseSequenceToken = 0;
+
 function showSurprise() {
   const box = document.getElementById('surprise');
-  box.style.display = box.style.display === 'block' ? 'none' : 'block';
+  const content = document.getElementById('surpriseContent');
+  if (!box || !content) return;
+
+  // Klik kedua menutup kotak dan membatalkan urutan yang sedang berjalan.
+  if (box.classList.contains('is-open')) {
+    surpriseSequenceToken++;
+    surpriseTimers.forEach(clearTimeout);
+    surpriseTimers = [];
+    box.classList.remove('is-open', 'is-visible');
+    window.setTimeout(() => { box.style.display = 'none'; }, 450);
+    return;
+  }
+
+  surpriseSequenceToken++;
+  const token = surpriseSequenceToken;
+  surpriseTimers.forEach(clearTimeout);
+  surpriseTimers = [];
+  box.style.display = 'block';
+  box.classList.add('is-open');
+  box.classList.remove('is-visible');
+
+  const birthdayMessage = `Hai, INK<br>Selamat ulang tahun ya. Semoga kedepannya kamu bisa menjadi lebih baik, dan tuhan selalu menjagamu. Maaf gak bisa kasih apa-apa, cuma bisa buat ini. Semoga kamu menyukainya. 😊`;
+  const equations = [
+    `3(x-5)+2=56<br>3x-15+2=56<br>3x-13=56<br>3×=69<br>x=23`,
+    `4x+7=51<br>4x=44<br>x=11`,
+    `1 dekade= 10 tahun<br><br>2000+2(10)+6=<br>2000+20+6=<br>2026`
+  ];
+
+  function displayCard(html, duration, fadeDuration) {
+    if (token !== surpriseSequenceToken) return;
+    content.innerHTML = html;
+    content.style.setProperty('--surprise-fade-duration', `${fadeDuration}ms`);
+    content.classList.remove('fade-out');
+    content.classList.add('fade-in');
+    box.classList.add('is-visible');
+    const fadeOutAt = Math.max(0, duration - fadeDuration);
+    surpriseTimers.push(window.setTimeout(() => {
+      if (token !== surpriseSequenceToken) return;
+      content.classList.remove('fade-in');
+      content.classList.add('fade-out');
+    }, fadeOutAt));
+  }
+
+  // Pesan pembuka: 30 detik termasuk fade-in dan fade-out.
+  displayCard(birthdayMessage, 30000, 1500);
+  let elapsed = 30000;
+  equations.forEach((equation) => {
+    surpriseTimers.push(window.setTimeout(() => {
+      displayCard(`<div class="equation-text">${equation}</div>`, 10000, 1000);
+    }, elapsed));
+    elapsed += 10000;
+  });
+
+  // Setelah tiga persamaan, tampilkan gambar hati dan biarkan tetap terlihat.
+  surpriseTimers.push(window.setTimeout(() => {
+    if (token !== surpriseSequenceToken) return;
+    content.classList.remove('fade-in', 'fade-out');
+    content.innerHTML = `<svg class="surprise-love" viewBox="0 0 240 210" role="img" aria-label="Gambar hati berwarna merah muda">
+      <defs><linearGradient id="loveGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8db8"/><stop offset="1" stop-color="#d92f79"/></linearGradient></defs>
+      <path d="M120 190 C103 174 22 119 22 66 C22 18 83 4 120 51 C157 4 218 18 218 66 C218 119 137 174 120 190Z" fill="url(#loveGradient)" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M65 48 C78 32 99 36 108 49" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".8"/>
+    </svg>`;
+    content.classList.add('fade-in');
+  }, elapsed));
+
+  surpriseTimers.push(window.setTimeout(() => {
+    if (token === surpriseSequenceToken) content.classList.remove('fade-in');
+  }, elapsed + 1200));
 }
 </script>
 </body>
