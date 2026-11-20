@@ -239,13 +239,11 @@ body {
 .quiz-step[hidden] { display:none !important; }
 .quiz-step.active { display:block; }
 .quiz-actions button:disabled { opacity:.38; cursor:not-allowed; transform:none; box-shadow:none; }
-
-
-/* Transisi sinematik setelah nilai berhasil disubmit. */
+\n
+/* Transisi gelap sinematik setelah nilai disubmit. */
 #birthdayTransition {
   position:fixed; inset:0; z-index:9998; background:#000;
-  opacity:0; pointer-events:none;
-  transition:opacity 5s linear;
+  opacity:0; pointer-events:none; transition:opacity 5s linear;
 }
 #birthdayTransition.active { opacity:1; pointer-events:auto; }
 #birthdayTransition.fade-out { opacity:0; }
@@ -258,12 +256,11 @@ body {
 }
 #birthdayDateReveal.show {
   opacity:1;
-  animation:dateSweep var(--voice-duration,138.938s) linear forwards;
+  animation:dateSweep var(--voice-duration,135.938s) linear forwards;
 }
 @keyframes dateSweep {
-  0% { clip-path:inset(0 100% 0 0); opacity:0; }
-  1% { clip-path:inset(0 0 0 0); opacity:1; }
-  99% { clip-path:inset(0 0 0 0); opacity:1; }
+  0% { clip-path:inset(0 100% 0 0); opacity:1; }
+  97.5% { clip-path:inset(0 0 0 0); opacity:1; }
   100% { clip-path:inset(0 0 0 100%); opacity:0; }
 }
 #volumeHint {
@@ -273,6 +270,7 @@ body {
   text-align:center; opacity:0; pointer-events:none;
 }
 #volumeHint.show { opacity:1; }
+#volumeHint.needs-tap { pointer-events:auto; cursor:pointer; }
 
 </style>
 </head>
@@ -290,7 +288,7 @@ body {
     <h1 class="quiz-title">Selesaikan Quiz Ini</h1>
     <p class="quiz-description">
       Selesaikan 3 soal matematika dan penalaran secara berurutan. Masukkan jawaban dalam bentuk angka,
-      periksa kembali hasil perhitunganmu, dan jawab semua soal dengan benar untuk membuka kejutan.
+      periksa kembali hasil perhitunganmu, dan jawab setiap soal dengan teliti.
     </p>
     <div class="quiz-instructions">
       <h2>Peraturan Quiz</h2>
@@ -481,28 +479,29 @@ function startBirthdayReveal() {
   birthdayRevealStarted = true;
 
   const quiz = document.getElementById('quizScreen');
-  const panel = document.getElementById('quizQuestionPanel');
   const birthday = document.getElementById('birthdayScreen');
+  const panel = document.getElementById('quizQuestionPanel');
   const shade = document.getElementById('birthdayTransition');
   const dateText = document.getElementById('birthdayDateReveal');
   const volumeHint = document.getElementById('volumeHint');
   const voice = document.getElementById('birthdayVoiceOver');
 
-  // Mulai mempersiapkan audio dari interaksi tombol agar peluang autoplay lebih baik di ponsel.
+  // Meminta izin playback dari interaksi tombol; audio tetap diam sampai layar benar-benar hitam.
   voice.muted = true;
-  voice.currentTime = 0;
-  const warmup = voice.play();
-  if (warmup && typeof warmup.then === 'function') {
-    warmup.then(() => {
+  voice.volume = 1;
+  const primePlayback = voice.play();
+  if (primePlayback && typeof primePlayback.then === 'function') {
+    primePlayback.then(() => {
       voice.pause();
       voice.currentTime = 0;
+      voice.muted = false;
     }).catch(() => {});
   }
 
-  // Detik 1–5: layar menggelap, tampilan quiz tetap terlihat.
+  // Detik 0–5: fade in hitam. Tampilan quiz tetap di belakang lapisan gelap.
   requestAnimationFrame(() => shade.classList.add('active'));
 
-  // Tepat di tengah fade-in (2,5 detik), ganti ke tampilan ulang tahun saat layar masih gelap.
+  // Pada akhir detik ke-5, layar sudah 100% hitam: baru tukar tampilan di balik layar gelap.
   window.setTimeout(() => {
     quiz.classList.add('hide');
     quiz.setAttribute('aria-hidden', 'true');
@@ -511,41 +510,50 @@ function startBirthdayReveal() {
     birthday.classList.add('reveal');
     birthday.setAttribute('aria-hidden', 'false');
     window.scrollTo(0, 0);
-  }, 2500);
+  }, 5000);
 
-  // Setelah 5 detik layar hitam penuh: mulai voice over dan tampilkan petunjuk suara serta tanggal.
+  // Mulai voice-over dan sapuan tanggal hanya setelah fade-in 5 detik selesai.
   window.setTimeout(async () => {
-    const duration = Number.isFinite(voice.duration) ? voice.duration : 138.938;
-    dateText.style.setProperty('--voice-duration', `${duration}s`);
-    dateText.classList.add('show');
-    volumeHint.classList.add('show');
-
-    try {
+    const startVoice = async () => {
+      const voiceDuration = Number.isFinite(voice.duration) && voice.duration > 0
+        ? voice.duration : 138.938;
+      // 97.5% durasi untuk sapuan masuk; 2.5% terakhir (sekitar 3 detik untuk audio ini)
+      // dipakai untuk sapuan keluar tanggal sebelum voice-over berakhir.
+      dateText.style.setProperty('--voice-duration', `${voiceDuration}s`);
+      dateText.classList.add('show');
+      volumeHint.classList.add('show');
       voice.currentTime = 0;
       voice.muted = false;
       voice.volume = 1;
-      await voice.play();
-    } catch (error) {
-      // Fallback jika browser menolak pemutaran otomatis.
-      volumeHint.textContent = 'KETUK LAYAR UNTUK MEMUTAR SUARA';
-      volumeHint.style.pointerEvents = 'auto';
-      volumeHint.style.cursor = 'pointer';
-      volumeHint.onclick = async () => {
-        try {
-          voice.muted = false;
-          await voice.play();
-          volumeHint.textContent = 'KERASKAN SUARA';
-          volumeHint.style.pointerEvents = 'none';
-          volumeHint.style.cursor = 'default';
-        } catch (_) {}
-      };
+      try {
+        await voice.play();
+      } catch (error) {
+        // Jika browser menolak autoplay, ketukan pada petunjuk akan memulai audio.
+        volumeHint.textContent = 'KETUK DI SINI UNTUK MEMUTAR SUARA';
+        volumeHint.classList.add('needs-tap');
+        volumeHint.onclick = async () => {
+          try {
+            await voice.play();
+            volumeHint.textContent = 'KERASKAN SUARA';
+            volumeHint.classList.remove('needs-tap');
+            volumeHint.onclick = null;
+          } catch (_) {}
+        };
+      }
+    };
+
+    if (voice.readyState >= 1) {
+      startVoice();
+    } else {
+      voice.addEventListener('loadedmetadata', startVoice, { once: true });
+      voice.load();
     }
   }, 5000);
 
-  // Saat voice over benar-benar selesai, tanggal disapu keluar dan layar menggelap memudar 5 detik.
+  // Setelah audio selesai, gelapkan overlay memudar selama 5 detik untuk membuka halaman ulang tahun.
   voice.addEventListener('ended', () => {
     dateText.classList.remove('show');
-    volumeHint.classList.remove('show');
+    volumeHint.classList.remove('show', 'needs-tap');
     shade.classList.add('fade-out');
     window.setTimeout(() => {
       shade.classList.remove('active', 'fade-out');
