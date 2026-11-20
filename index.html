@@ -275,7 +275,6 @@ body {
   pointer-events:none; white-space:normal; will-change:clip-path,opacity;
 }
 #birthdayDateReveal.show {
-  opacity:1;
   animation:dateSweep var(--voice-duration,138.938s) linear forwards;
 }
 #birthdayDateReveal.fade-in-question {
@@ -300,9 +299,9 @@ body {
   100% { clip-path:inset(0 0 0 0); opacity:1; }
 }
 @keyframes dateSweep {
-  0% { clip-path:inset(0 100% 0 0); opacity:1; }
-  97.5% { clip-path:inset(0 0 0 0); opacity:1; }
-  100% { clip-path:inset(0 0 0 100%); opacity:0; }
+  0% { clip-path:inset(0 100% 0 0); }
+  97.5% { clip-path:inset(0 0 0 0); }
+  100% { clip-path:inset(0 0 0 100%); }
 }
 #volumeHint {
   position:fixed !important; z-index:2147483003 !important;
@@ -806,9 +805,27 @@ function startBirthdayReveal() {
     questionAnimation.cancel();
     window.setTimeout(() => {
       dateText.style.setProperty('visibility', 'visible', 'important');
-      dateText.style.opacity = '1';
+      dateText.style.opacity = '0';
       dateText.style.clipPath = 'inset(0 100% 0 0)';
       dateText.classList.add('show');
+
+      // Fade-in opacity dimulai tepat pada detik ke-6 dan berlangsung 1 detik.
+      // Fade-out tetap berada di 2,5% terakhir dari durasi animasi yang sama,
+      // sehingga waktu selesai dan posisi fade-out tidak bergeser.
+      const dateAnimationDuration = Math.max(
+        1000,
+        (Number.parseFloat(dateText.style.getPropertyValue('--voice-duration')) || 138.938) * 1000
+      );
+      const fadeInOffset = Math.min(0.95, 1000 / dateAnimationDuration);
+      dateText.animate(
+        [
+          { opacity: 0, offset: 0 },
+          { opacity: 1, offset: fadeInOffset },
+          { opacity: 1, offset: 0.975 },
+          { opacity: 0, offset: 1 }
+        ],
+        { duration: dateAnimationDuration, easing: 'linear', fill: 'forwards' }
+      );
     }, 1000);
   };
 
